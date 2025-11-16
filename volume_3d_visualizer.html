@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旋轉體體積視覺化（動畫版）</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.98);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 420px;
+            max-height: 90vh;
+            overflow-y: auto;
+            z-index: 100;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        #controls.collapsed {
+            transform: translateX(-390px);
+            opacity: 0.3;
+        }
+        #controls.collapsed:hover {
+            opacity: 0.6;
+        }
+        #toggleBtn {
+            position: absolute;
+            right: -45px;
+            top: 20px;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 0 8px 8px 0;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        #toggleBtn:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            transform: scale(1.1);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 24px;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+        .method-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .method-btn {
+            padding: 12px;
+            background: #f0f0f0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .method-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+        label {
+            display: block;
+            margin: 15px 0 5px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        input[type="text"], select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            transition: border-color 0.3s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        button.main-btn {
+            width: 100%;
+            padding: 14px;
+            margin-top: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        button.main-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        button.main-btn.animate {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .result {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .result h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .result .value {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+        .formula {
+            font-family: 'Courier New', monospace;
+            background: rgba(255,255,255,0.2);
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        .axis-selector {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .axis-btn {
+            flex: 1;
+            padding: 10px;
+            background: #f0f0f0;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .axis-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #1565c0;
+        }
+        .examples {
+            background: #f3e5f5;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .examples h4 {
+            color: #6a1b9a;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+        .example-btn {
+            display: inline-block;
+            padding: 6px 12px;
+            margin: 4px;
+            background: white;
+            border: 2px solid #9c27b0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            color: #6a1b9a;
+            transition: all 0.2s;
+        }
+        .example-btn:hover {
+            background: #9c27b0;
+            color: white;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 12px;
+            border: 2px solid #ef5350;
+        }
+        #info-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+            font-size: 13px;
+            color: #333;
+            max-width: 350px;
+            line-height: 1.8;
+        }
+        .resolution-info {
+            background: #fff3e0;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 8px;
+            font-size: 11px;
+            color: #e65100;
+            border: 2px solid #ffb74d;
+        }
+        .slider-container {
+            margin-top: 5px;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+        .animation-controls {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border: 2px solid #4caf50;
+        }
+        .animation-controls h4 {
+            color: #2e7d32;
+            font-size: 15px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .animation-progress {
+            background: #fff;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 2px solid #81c784;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 24px;
+            background: #e0e0e0;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50 0%, #81c784 100%);
+            transition: width 0.1s linear;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .animation-btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .anim-btn {
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+        .anim-btn.play {
+            background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+            color: white;
+        }
+        .anim-btn.pause {
+            background: linear-gradient(135deg, #ff9800 0%, #ffb74d 100%);
+            color: white;
+        }
+        .anim-btn.stop {
+            background: linear-gradient(135deg, #f44336 0%, #ef5350 100%);
+            color: white;
+        }
+        .anim-btn.reset {
+            background: linear-gradient(135deg, #9e9e9e 0%, #bdbdbd 100%);
+            color: white;
+        }
+        .anim-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+        }
+        .anim-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .speed-control {
+            margin-top: 10px;
+        }
+        .speed-control label {
+            font-size: 12px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div id="controls">
+        <button id="toggleBtn" onclick="toggleControls()">◀</button>
+        
+        <h1>🎯 旋轉體體積計算器（動畫版）</h1>
+        <p class="subtitle">Solid of Revolution with Animation</p>
+        
+        <div class="examples">
+            <h4>📚 範例：</h4>
+            <span class="example-btn" onclick="loadExample(0)">題23: 球體</span>
+            <span class="example-btn" onclick="loadExample(1)">題20: sin·cos</span>
+            <span class="example-btn" onclick="loadExample(2)">題40: Washer</span>
+            <span class="example-btn" onclick="loadExample(3)">題45: Washer</span>
+        </div>
+        
+        <div class="method-selector">
+            <div class="method-btn active" onclick="setMethod('disk')">
+                Disk Method
+            </div>
+            <div class="method-btn" onclick="setMethod('washer')">
+                Washer Method
+            </div>
+        </div>
+        
+        <label>外函數 R(x) =</label>
+        <input type="text" id="outerFunc" value="sqrt(x)" placeholder="x^2, sin(x), e^x, sqrt(x)">
+        
+        <label id="innerLabel" style="display:none;">內函數 r(x) =</label>
+        <input type="text" id="innerFunc" value="0" placeholder="x, x^2, ln(x)" style="display:none;">
+        
+        <label>旋轉軸：</label>
+        <div class="axis-selector">
+            <div class="axis-btn active" onclick="setAxis('x')">x 軸</div>
+            <div class="axis-btn" onclick="setAxis('y')">y 軸</div>
+        </div>
+        
+        <div class="grid-2">
+            <div>
+                <label>下界 a =</label>
+                <input type="text" id="lowerBound" value="0" placeholder="0, pi/4, e">
+            </div>
+            <div>
+                <label>上界 b =</label>
+                <input type="text" id="upperBound" value="4" placeholder="2, pi, 2*e">
+            </div>
+        </div>
+        
+        <label>解析度（圓盤數量）：<span id="resValue">40</span></label>
+        <div class="slider-container">
+            <input type="range" id="resolution" min="20" max="100" value="40" 
+                   oninput="updateResolution(this.value)">
+        </div>
+        <div class="resolution-info">
+            <strong>💡 解析度說明：</strong><br>
+            控制旋轉體由多少個「圓盤」組成。
+        </div>
+        
+        <button class="main-btn" onclick="generateSolid()">🔄 生成完整旋轉體</button>
+        
+        <!-- 動畫控制區 -->
+        <div class="animation-controls">
+            <h4>🎬 動畫模式</h4>
+            <p style="font-size: 12px; color: #2e7d32; margin-bottom: 10px;">
+                逐步展示圓盤堆疊過程（0 → 解析度）
+            </p>
+            
+            <div class="animation-progress" id="animProgress" style="display:none;">
+                <div style="font-size: 11px; color: #666; margin-bottom: 5px;">
+                    當前圓盤數：<strong id="currentSlices">0</strong> / <strong id="totalSlices">40</strong>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%;">0%</div>
+                </div>
+            </div>
+            
+            <div class="animation-btn-group">
+                <button class="anim-btn play" onclick="startAnimation()">▶ 播放動畫</button>
+                <button class="anim-btn pause" onclick="pauseAnimation()" disabled>⏸ 暫停</button>
+                <button class="anim-btn stop" onclick="stopAnimation()" disabled>⏹ 停止</button>
+                <button class="anim-btn reset" onclick="resetAnimation()">↺ 重置</button>
+            </div>
+            
+            <div class="speed-control">
+                <label>動畫速度：<span id="speedValue">中速</span></label>
+                <input type="range" id="animSpeed" min="1" max="5" value="3" 
+                       oninput="updateSpeed(this.value)">
+            </div>
+        </div>
+        
+        <div id="errorMsg" class="error" style="display:none;"></div>
+        
+        <div class="result" id="result" style="display:none;">
+            <h3>計算體積</h3>
+            <div class="value" id="volumeValue">0</div>
+            <div class="formula" id="formulaDisplay"></div>
+        </div>
+        
+        <div class="info">
+            <strong>🎬 動畫功能：</strong>從 0 個圓盤開始，逐步增加到設定的解析度，清楚展示旋轉體的建構過程！
+        </div>
+    </div>
+    
+    <div id="info-panel">
+        <strong>🎨 互動控制說明</strong><br>
+        <strong>滑鼠左鍵拖曳：</strong>旋轉 3D 視角<br>
+        <strong>滑鼠滾輪：</strong>縮放畫面遠近<br>
+        <strong>動畫模式：</strong>觀看圓盤逐個堆疊<br>
+        <br>
+        <strong>💡 教學提示：</strong><br>
+        使用動畫可以清楚看到：<br>
+        • 每個圓盤的厚度<br>
+        • 半徑如何隨位置變化<br>
+        • 圓盤如何組成旋轉體
+    </div>
+
+    <script>
+        let scene, camera, renderer, solid;
+        let currentMethod = 'disk';
+        let currentAxis = 'x';
+        let controlsCollapsed = false;
+        
+        // 動畫相關變數
+        let isAnimating = false;
+        let animationPaused = false;
+        let currentSliceCount = 0;
+        let animationSpeed = 50; // ms per slice
+        let animationInterval = null;
+        let cachedSolidData = null;
+        
+        const examples = [
+            { outer: 'sqrt(9-x^2)', inner: '0', a: '-3', b: '3', method: 'disk', name: '題23: 球體' },
+            { outer: 'sin(x)*cos(x)', inner: '0', a: '0', b: 'pi/2', method: 'disk', name: '題20: sin·cos' },
+            { outer: '1', inner: 'tan(y)', a: '0', b: 'pi/4', method: 'washer', name: '題40: Washer', axis: 'y' },
+            { outer: 'sqrt(2)', inner: 'sec(x)', a: '-pi/4', b: 'pi/4', method: 'washer', name: '題45: Washer' }
+        ];
+        
+        function toggleControls() {
+            const controls = document.getElementById('controls');
+            const btn = document.getElementById('toggleBtn');
+            controlsCollapsed = !controlsCollapsed;
+            
+            if (controlsCollapsed) {
+                controls.classList.add('collapsed');
+                btn.textContent = '▶';
+            } else {
+                controls.classList.remove('collapsed');
+                btn.textContent = '◀';
+            }
+        }
+        
+        function updateResolution(value) {
+            document.getElementById('resValue').textContent = value;
+            document.getElementById('totalSlices').textContent = value;
+        }
+        
+        function updateSpeed(value) {
+            const speeds = ['極慢', '慢速', '中速', '快速', '極快'];
+            const speedMs = [200, 100, 50, 25, 10];
+            document.getElementById('speedValue').textContent = speeds[value - 1];
+            animationSpeed = speedMs[value - 1];
+        }
+        
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf0f4f8);
+            
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(8, 6, 8);
+            camera.lookAt(0, 0, 0);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('container').appendChild(renderer.domElement);
+            
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 10, 10);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            const pointLight = new THREE.PointLight(0xffffff, 0.5);
+            pointLight.position.set(-10, 5, -10);
+            scene.add(pointLight);
+            
+            addAxes();
+            setupControls();
+            animate();
+            generateSolid();
+        }
+        
+        function createTextSprite(text, color) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 128;
+            canvas.height = 128;
+            
+            context.fillStyle = color;
+            context.font = 'Bold 80px Arial';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(text, 64, 64);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(0.8, 0.8, 1);
+            
+            return sprite;
+        }
+        
+        function addAxes() {
+            const axesGroup = new THREE.Group();
+            const axisLength = 12;
+            const labelPositionOffset = 7;
+            
+            const createAxis = (color, rotation) => {
+                const geometry = new THREE.CylinderGeometry(0.03, 0.03, axisLength, 16);
+                const material = new THREE.MeshBasicMaterial({ color });
+                const axis = new THREE.Mesh(geometry, material);
+                if (rotation) axis.rotation[rotation.axis] = rotation.angle;
+                
+                if (rotation && rotation.axis === 'z') axis.position.x = axisLength / 2;
+                else if (rotation && rotation.axis === 'x') axis.position.z = axisLength / 2;
+                else if (!rotation) axis.position.y = axisLength / 2;
+                
+                return axis;
+            };
+            
+            axesGroup.add(createAxis(0xff0000, { axis: 'z', angle: Math.PI / 2 }));
+            axesGroup.add(createAxis(0x00ff00, null));
+            axesGroup.add(createAxis(0x0000ff, { axis: 'x', angle: Math.PI / 2 }));
+            
+            const xLabel = createTextSprite('X', '#FF0000');
+            xLabel.position.set(labelPositionOffset, 0, 0);
+            axesGroup.add(xLabel);
+            
+            const yLabel = createTextSprite('Y', '#00FF00');
+            yLabel.position.set(0, labelPositionOffset, 0);
+            axesGroup.add(yLabel);
+            
+            const zLabel = createTextSprite('Z', '#0000FF');
+            zLabel.position.set(0, 0, labelPositionOffset);
+            axesGroup.add(zLabel);
+            
+            scene.add(axesGroup);
+            
+            const gridHelper = new THREE.GridHelper(12, 24, 0xcccccc, 0xe0e0e0);
+            scene.add(gridHelper);
+        }
+        
+        function setupControls() {
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+            const rotationSpeed = 0.005;
+            
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+            
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const deltaX = e.clientX - previousMousePosition.x;
+                    const deltaY = e.clientY - previousMousePosition.y;
+                    
+                    const radius = Math.sqrt(
+                        camera.position.x ** 2 + 
+                        camera.position.y ** 2 + 
+                        camera.position.z ** 2
+                    );
+                    
+                    const theta = Math.atan2(camera.position.z, camera.position.x);
+                    const phi = Math.acos(camera.position.y / radius);
+                    
+                    const newTheta = theta - deltaX * rotationSpeed;
+                    const newPhi = Math.max(0.1, Math.min(Math.PI - 0.1, phi - deltaY * rotationSpeed));
+                    
+                    camera.position.x = radius * Math.sin(newPhi) * Math.cos(newTheta);
+                    camera.position.y = radius * Math.cos(newPhi);
+                    camera.position.z = radius * Math.sin(newPhi) * Math.sin(newTheta);
+                    camera.lookAt(0, 0, 0);
+                    
+                    previousMousePosition = { x: e.clientX, y: e.clientY };
+                }
+            });
+            
+            renderer.domElement.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+            
+            renderer.domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = e.deltaY * 0.001;
+                const radius = Math.sqrt(
+                    camera.position.x ** 2 + 
+                    camera.position.y ** 2 + 
+                    camera.position.z ** 2
+                );
+                const newRadius = Math.max(3, Math.min(25, radius + delta * 10));
+                const scale = newRadius / radius;
+                
+                camera.position.x *= scale;
+                camera.position.y *= scale;
+                camera.position.z *= scale;
+            });
+        }
+        
+        function evaluateFunction(expr, variable) {
+            try {
+                const scope = { 
+                    x: variable,
+                    e: Math.E,
+                    pi: Math.PI,
+                    π: Math.PI
+                };
+                
+                let processed = expr
+                    .replace(/\bpi\b/gi, 'pi')
+                    .replace(/π/g, 'pi')
+                    .replace(/log\(/g, 'log10(')
+                    .replace(/ln\(/g, 'log(');
+                
+                const result = math.evaluate(processed, scope);
+                return result;
+            } catch (e) {
+                throw new Error('無法計算函數: ' + expr);
+            }
+        }
+        
+        function parseBoundary(boundStr) {
+            try {
+                const scope = { 
+                    e: Math.E,
+                    pi: Math.PI,
+                    π: Math.PI
+                };
+                
+                let processed = boundStr
+                    .replace(/\bpi\b/gi, 'pi')
+                    .replace(/π/g, 'pi');
+                
+                return math.evaluate(processed, scope);
+            } catch (e) {
+                throw new Error('無法解析邊界: ' + boundStr);
+            }
+        }
+        
+        function prepareSolidData() {
+            const outerFunc = document.getElementById('outerFunc').value;
+            const innerFunc = document.getElementById('innerFunc').value;
+            const aStr = document.getElementById('lowerBound').value;
+            const bStr = document.getElementById('upperBound').value;
+            const resolution = parseInt(document.getElementById('resolution').value);
+            
+            const a = parseBoundary(aStr);
+            const b = parseBoundary(bStr);
+            
+            if (a >= b) {
+                throw new Error('上界必須大於下界');
+            }
+            
+            return {
+                outerFunc, innerFunc, a, b, aStr, bStr, resolution,
+                segments: 36
+            };
+        }
+        
+        function generateSolidWithSlices(data, sliceCount) {
+            if (solid) scene.remove(solid);
+            
+            const { outerFunc, innerFunc, a, b, segments } = data;
+            const resolution = sliceCount;
+            
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            const indices = [];
+            const colors = [];
+            
+            const step = (b - a) / data.resolution;
+            let volume = 0;
+            
+            for (let i = 0; i <= resolution; i++) {
+                const x = a + i * step;
+                let outerR = Math.abs(evaluateFunction(outerFunc, x));
+                let innerR = currentMethod === 'washer' ? Math.abs(evaluateFunction(innerFunc, x)) : 0;
+                
+                if (!isFinite(outerR)) outerR = 0;
+                if (!isFinite(innerR)) innerR = 0;
+                
+                if (i < resolution) {
+                    const nextX = a + (i + 1) * step;
+                    let nextOuterR = Math.abs(evaluateFunction(outerFunc, nextX));
+                    let nextInnerR = currentMethod === 'washer' ? Math.abs(evaluateFunction(innerFunc, nextX)) : 0;
+                    
+                    if (!isFinite(nextOuterR)) nextOuterR = 0;
+                    if (!isFinite(nextInnerR)) nextInnerR = 0;
+                    
+                    const avgOuterR = (outerR + nextOuterR) / 2;
+                    const avgInnerR = (innerR + nextInnerR) / 2;
+                    
+                    volume += Math.PI * (avgOuterR ** 2 - avgInnerR ** 2) * step;
+                }
+                
+                for (let j = 0; j <= segments; j++) {
+                    const theta = (j / segments) * Math.PI * 2;
+                    const cos = Math.cos(theta);
+                    const sin = Math.sin(theta);
+                    
+                    if (currentAxis === 'x') {
+                        vertices.push(x, outerR * cos, outerR * sin);
+                    } else {
+                        vertices.push(outerR * cos, x, outerR * sin);
+                    }
+                    
+                    const t = i / data.resolution;
+                    colors.push(0.3 + t * 0.5, 0.2 + t * 0.4, 0.9, 0.9);
+                    
+                    if (currentMethod === 'washer' && innerR > 0.001) {
+                        if (currentAxis === 'x') {
+                            vertices.push(x, innerR * cos, innerR * sin);
+                        } else {
+                            vertices.push(innerR * cos, x, innerR * sin);
+                        }
+                        colors.push(0.9, 0.3 + t * 0.4, 0.2 + t * 0.4, 0.9);
+                    }
+                }
+            }
+            
+            const verticesPerRing = currentMethod === 'washer' ? (segments + 1) * 2 : segments + 1;
+            for (let i = 0; i < resolution; i++) {
+                for (let j = 0; j < segments; j++) {
+                    const current = i * verticesPerRing + j;
+                    const next = current + verticesPerRing;
+                    
+                    indices.push(current, next, current + 1);
+                    indices.push(current + 1, next, next + 1);
+                    
+                    if (currentMethod === 'washer') {
+                        const innerCurrent = current + segments + 1;
+                        const innerNext = innerCurrent + verticesPerRing;
+                        
+                        indices.push(innerCurrent, innerCurrent + 1, innerNext);
+                        indices.push(innerCurrent + 1, innerNext + 1, innerNext);
+                    }
+                }
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 4));
+            geometry.setIndex(indices);
+            geometry.computeVertexNormals();
+            
+            const material = new THREE.MeshPhongMaterial({
+                vertexColors: true,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.88,
+                shininess: 100,
+                specular: 0x444444
+            });
+            
+            solid = new THREE.Mesh(geometry, material);
+            scene.add(solid);
+            
+            return volume;
+        }
+        
+        function calculateExactVolume(outerExpr, innerExpr, a, b, method, axis) {
+            const cleanOuter = outerExpr.replace(/\s/g, '').toLowerCase();
+            const cleanInner = innerExpr.replace(/\s/g, '').toLowerCase();
+            
+            // 題23: 半圓 y=√(9-x²) 繞 x 軸 → 球體，V=36π
+            if (cleanOuter === 'sqrt(9-x^2)' && cleanInner === '0' && a === -3 && b === 3 && method === 'disk' && axis === 'x') {
+                return { exact: true, symbolic: '36π', numeric: 36 * Math.PI };
+            }
+            
+            // 題20: y=sin(x)cos(x) 繞 x 軸，[0,π/2]，V=π²/16
+            if (cleanOuter === 'sin(x)*cos(x)' && cleanInner === '0' && a === 0 && Math.abs(b - Math.PI/2) < 0.01 && method === 'disk' && axis === 'x') {
+                return { exact: true, symbolic: 'π²/16', numeric: Math.PI * Math.PI / 16 };
+            }
+            
+            // 題40: Washer，R=1, r=tan(y)，[0,π/4]，繞 y 軸，V=π²/2 - π
+            if (cleanOuter === '1' && cleanInner === 'tan(y)' && a === 0 && Math.abs(b - Math.PI/4) < 0.01 && method === 'washer' && axis === 'y') {
+                return { exact: true, symbolic: 'π²/2 - π', numeric: Math.PI * Math.PI / 2 - Math.PI };
+            }
+            
+            // 題45: Washer，R=√2, r=sec(x)，[-π/4,π/4]，V=π² - 2π
+            if (cleanOuter === 'sqrt(2)' && cleanInner === 'sec(x)' && Math.abs(a + Math.PI/4) < 0.01 && Math.abs(b - Math.PI/4) < 0.01 && method === 'washer' && axis === 'x') {
+                return { exact: true, symbolic: 'π² - 2π', numeric: Math.PI * Math.PI - 2 * Math.PI };
+            }
+            
+            return null;
+        }
+        
+        function generateSolid() {
+            const errorMsg = document.getElementById('errorMsg');
+            errorMsg.style.display = 'none';
+            
+            try {
+                cachedSolidData = prepareSolidData();
+                
+                // 嘗試精確積分
+                const exactResult = calculateExactVolume(
+                    cachedSolidData.outerFunc,
+                    cachedSolidData.innerFunc,
+                    cachedSolidData.a,
+                    cachedSolidData.b,
+                    currentMethod,
+                    currentAxis
+                );
+                
+                let displayText;
+                if (exactResult && exactResult.exact) {
+                    displayText = exactResult.symbolic;
+                } else {
+                    const volume = generateSolidWithSlices(cachedSolidData, cachedSolidData.resolution);
+                    displayText = volume.toFixed(6);
+                }
+                
+                // 生成視覺化
+                generateSolidWithSlices(cachedSolidData, cachedSolidData.resolution);
+                
+                document.getElementById('result').style.display = 'block';
+                document.getElementById('volumeValue').textContent = displayText;
+                
+                const formulaText = currentMethod === 'disk' 
+                    ? `V = π∫[${cachedSolidData.aStr}, ${cachedSolidData.bStr}] [R(x)]² dx`
+                    : `V = π∫[${cachedSolidData.aStr}, ${cachedSolidData.bStr}] {[R(x)]² - [r(x)]²} dx`;
+                document.getElementById('formulaDisplay').textContent = formulaText;
+                
+            } catch (e) {
+                errorMsg.textContent = '錯誤: ' + e.message;
+                errorMsg.style.display = 'block';
+                document.getElementById('result').style.display = 'none';
+            }
+        }
+        
+        function startAnimation() {
+            if (isAnimating && !animationPaused) return;
+            
+            const errorMsg = document.getElementById('errorMsg');
+            errorMsg.style.display = 'none';
+            
+            try {
+                if (!cachedSolidData) {
+                    cachedSolidData = prepareSolidData();
+                }
+                
+                if (!animationPaused) {
+                    currentSliceCount = 0;
+                }
+                
+                isAnimating = true;
+                animationPaused = false;
+                
+                document.getElementById('animProgress').style.display = 'block';
+                document.getElementById('totalSlices').textContent = cachedSolidData.resolution;
+                
+                updateAnimationButtons(true);
+                
+                animationInterval = setInterval(() => {
+                    if (currentSliceCount <= cachedSolidData.resolution) {
+                        generateSolidWithSlices(cachedSolidData, currentSliceCount);
+                        
+                        document.getElementById('currentSlices').textContent = currentSliceCount;
+                        const percentage = (currentSliceCount / cachedSolidData.resolution * 100).toFixed(0);
+                        document.getElementById('progressFill').style.width = percentage + '%';
+                        document.getElementById('progressFill').textContent = percentage + '%';
+                        
+                        currentSliceCount++;
+                    } else {
+                        stopAnimation();
+                        const volume = generateSolidWithSlices(cachedSolidData, cachedSolidData.resolution);
+                        document.getElementById('result').style.display = 'block';
+                        document.getElementById('volumeValue').textContent = volume.toFixed(6);
+                    }
+                }, animationSpeed);
+                
+            } catch (e) {
+                errorMsg.textContent = '錯誤: ' + e.message;
+                errorMsg.style.display = 'block';
+                stopAnimation();
+            }
+        }
+        
+        function pauseAnimation() {
+            if (!isAnimating) return;
+            
+            animationPaused = true;
+            clearInterval(animationInterval);
+            updateAnimationButtons(false);
+        }
+        
+        function stopAnimation() {
+            isAnimating = false;
+            animationPaused = false;
+            clearInterval(animationInterval);
+            currentSliceCount = 0;
+            updateAnimationButtons(false);
+        }
+        
+        function resetAnimation() {
+            stopAnimation();
+            currentSliceCount = 0;
+            document.getElementById('currentSlices').textContent = '0';
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('progressFill').textContent = '0%';
+            
+            if (cachedSolidData) {
+                generateSolidWithSlices(cachedSolidData, 0);
+            }
+        }
+        
+        function updateAnimationButtons(playing) {
+            const playBtn = document.querySelectorAll('.anim-btn.play')[0];
+            const pauseBtn = document.querySelectorAll('.anim-btn.pause')[0];
+            const stopBtn = document.querySelectorAll('.anim-btn.stop')[0];
+            
+            if (playing) {
+                playBtn.disabled = true;
+                pauseBtn.disabled = false;
+                stopBtn.disabled = false;
+            } else {
+                playBtn.disabled = false;
+                pauseBtn.disabled = true;
+                stopBtn.disabled = true;
+            }
+        }
+        
+        function setMethod(method) {
+            currentMethod = method;
+            
+            document.querySelectorAll('.method-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            const innerLabel = document.getElementById('innerLabel');
+            const innerFunc = document.getElementById('innerFunc');
+            
+            if (method === 'washer') {
+                innerLabel.style.display = 'block';
+                innerFunc.style.display = 'block';
+            } else {
+                innerLabel.style.display = 'none';
+                innerFunc.style.display = 'none';
+            }
+        }
+        
+        function setAxis(axis) {
+            currentAxis = axis;
+            document.querySelectorAll('.axis-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+        
+        function loadExample(index) {
+            const ex = examples[index];
+            document.getElementById('outerFunc').value = ex.outer;
+            document.getElementById('innerFunc').value = ex.inner;
+            document.getElementById('lowerBound').value = ex.a;
+            document.getElementById('upperBound').value = ex.b;
+            
+            if (ex.method === 'washer') {
+                setMethodProgrammatic('washer');
+            } else {
+                setMethodProgrammatic('disk');
+            }
+            
+            // 設置軸（如果指定）
+            if (ex.axis) {
+                currentAxis = ex.axis;
+                document.querySelectorAll('.axis-btn').forEach((btn, idx) => {
+                    btn.classList.remove('active');
+                    if ((ex.axis === 'x' && idx === 0) || (ex.axis === 'y' && idx === 1)) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
+            
+            generateSolid();
+        }
+        
+        function setMethodProgrammatic(method) {
+            currentMethod = method;
+            document.querySelectorAll('.method-btn').forEach((btn, idx) => {
+                if ((method === 'disk' && idx === 0) || (method === 'washer' && idx === 1)) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            const innerLabel = document.getElementById('innerLabel');
+            const innerFunc = document.getElementById('innerFunc');
+            
+            if (method === 'washer') {
+                innerLabel.style.display = 'block';
+                innerFunc.style.display = 'block';
+            } else {
+                innerLabel.style.display = 'none';
+                innerFunc.style.display = 'none';
+            }
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        init();
+    </script>
+</body>
+</html>
