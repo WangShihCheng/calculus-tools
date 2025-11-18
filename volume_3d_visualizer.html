@@ -7,6 +7,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -15,23 +18,19 @@
             overflow: hidden;
         }
         #container { width: 100vw; height: 100vh; position: relative; }
+        
+        /* 控制面板 */
         #controls {
-            position: absolute;
-            top: 20px; left: 20px;
+            position: absolute; top: 20px; left: 20px;
             background: rgba(255, 255, 255, 0.98);
-            padding: 25px;
-            border-radius: 15px;
+            padding: 25px; border-radius: 15px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            max-width: 420px;
-            max-height: 90vh;
-            overflow-y: auto;
-            z-index: 100;
-            transition: transform 0.3s ease, opacity 0.3s ease;
+            max-width: 420px; max-height: 90vh; overflow-y: auto;
+            z-index: 100; transition: transform 0.3s ease, opacity 0.3s ease;
         }
         #controls.collapsed { transform: translateX(-390px); opacity: 0.3; }
         #controls.collapsed:hover { opacity: 0.6; }
         
-        /* 收合按鈕 */
         #toggleBtn {
             position: absolute; right: -45px; top: 20px;
             width: 40px; height: 40px;
@@ -42,39 +41,10 @@
             display: flex; align-items: center; justify-content: center;
         }
         
-        /* 右下角說明面板樣式 */
-        #info-container {
-            position: absolute; bottom: 20px; right: 20px; z-index: 101;
-            display: flex; flex-direction: column; align-items: flex-end;
-        }
-        #info-panel {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 20px; border-radius: 12px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-            font-size: 13px; color: #333; max-width: 350px;
-            line-height: 1.8;
-            transition: all 0.3s ease;
-            transform-origin: bottom right;
-        }
-        #info-panel.hidden {
-            opacity: 0; transform: scale(0.9) translateY(20px); pointer-events: none; display: none;
-        }
-        #infoToggleBtn {
-            width: 36px; height: 36px;
-            background: white; border-radius: 50%;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            border: none; font-size: 18px; font-weight: bold; color: #667eea;
-            cursor: pointer; margin-bottom: 10px;
-            display: flex; align-items: center; justify-content: center;
-        }
-
         h1 { color: #667eea; margin-bottom: 8px; font-size: 24px; }
         .subtitle { color: #666; font-size: 13px; margin-bottom: 20px; }
         
-        /* 選擇器樣式 */
-        .method-selector, .axis-selector {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0;
-        }
+        .method-selector, .axis-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
         .method-btn, .axis-btn {
             padding: 12px; background: #f0f0f0; border: 2px solid #ddd;
             border-radius: 8px; cursor: pointer; transition: all 0.3s;
@@ -110,8 +80,8 @@
         }
         .result .value { font-size: 28px; font-weight: bold; margin: 8px 0; }
         .formula {
-            font-family: 'Courier New', monospace; background: rgba(255,255,255,0.2);
-            padding: 8px; border-radius: 5px; font-size: 12px; margin-top: 8px;
+            font-family: 'Times New Roman', serif; background: rgba(255,255,255,0.2);
+            padding: 8px; border-radius: 5px; font-size: 14px; margin-top: 8px;
         }
         
         .examples { background: #f3e5f5; padding: 12px; border-radius: 8px; margin: 15px 0; }
@@ -127,8 +97,8 @@
             background: #ffebee; color: #c62828; padding: 10px;
             border-radius: 6px; margin-top: 10px; font-size: 12px; border: 2px solid #ef5350;
         }
-
-        /* 動畫控制區 */
+        
+        /* 動畫控制 */
         .animation-controls {
             background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
             padding: 15px; border-radius: 10px; margin-top: 20px; border: 2px solid #4caf50;
@@ -142,17 +112,32 @@
             color: white; font-weight: bold; font-size: 12px;
         }
         .anim-btn-group { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 10px; }
-        .anim-btn {
-            padding: 8px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 12px;
-        }
-        .anim-btn.play { background: #4caf50; color: white; }
-        .anim-btn.pause { background: #ff9800; color: white; }
-        .anim-btn.stop { background: #f44336; color: white; }
-        .anim-btn.reset { background: #9e9e9e; color: white; }
+        .anim-btn { padding: 8px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 12px; }
+        .play { background: #4caf50; color: white; } .pause { background: #ff9800; color: white; }
+        .stop { background: #f44336; color: white; } .reset { background: #9e9e9e; color: white; }
         .anim-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        
         input[type="range"] { width: 100%; margin-top: 5px; }
-        .speed-control label { font-size: 12px; }
+
+        /* 右下角說明面板 (可縮小) */
+        #info-container {
+            position: absolute; bottom: 20px; right: 20px; z-index: 101;
+            display: flex; flex-direction: column; align-items: flex-end;
+        }
+        #info-panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px; border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+            font-size: 13px; color: #333; max-width: 350px;
+            line-height: 1.8; transition: all 0.3s ease; transform-origin: bottom right;
+        }
+        #info-panel.hidden { opacity: 0; transform: scale(0.9) translateY(20px); pointer-events: none; display: none; }
+        #infoToggleBtn {
+            width: 36px; height: 36px; background: white; border-radius: 50%;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2); border: none;
+            font-size: 18px; font-weight: bold; color: #667eea;
+            cursor: pointer; margin-bottom: 10px;
+            display: flex; align-items: center; justify-content: center;
+        }
     </style>
 </head>
 <body>
@@ -197,14 +182,8 @@
         <input type="text" id="innerFunc" value="0" placeholder="0" style="display:none;">
         
         <div class="grid-2">
-            <div>
-                <label id="lbLabel">下界 a =</label>
-                <input type="text" id="lowerBound" value="0">
-            </div>
-            <div>
-                <label id="ubLabel">上界 b =</label>
-                <input type="text" id="upperBound" value="4">
-            </div>
+            <div><label id="lbLabel">下界 a =</label><input type="text" id="lowerBound" value="0"></div>
+            <div><label id="ubLabel">上界 b =</label><input type="text" id="upperBound" value="4"></div>
         </div>
         
         <label>解析度 (圓盤數)：<span id="resValue">40</span></label>
@@ -218,18 +197,14 @@
                 <div style="font-size: 11px; color: #555; margin-bottom: 5px;">
                     堆疊進度：<strong id="currentSlices">0</strong> / <strong id="totalSlices">40</strong>
                 </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill" style="width: 0%;">0%</div>
-                </div>
+                <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width: 0%;">0%</div></div>
             </div>
-            
             <div class="anim-btn-group">
                 <button class="anim-btn play" onclick="startAnimation()">▶ 播放</button>
                 <button class="anim-btn pause" onclick="pauseAnimation()" disabled>⏸ 暫停</button>
                 <button class="anim-btn stop" onclick="stopAnimation()" disabled>⏹ 停止</button>
                 <button class="anim-btn reset" onclick="resetAnimation()">↺ 重置</button>
             </div>
-            
             <div class="speed-control" style="margin-top:10px">
                 <label>動畫速度：<span id="speedValue">中速</span></label>
                 <input type="range" id="animSpeed" min="1" max="5" value="3" oninput="updateSpeed(this.value)">
@@ -255,8 +230,8 @@
             <br>
             <strong>💡 學習重點：</strong><br>
             • 觀察切片厚度 $dx$ 或 $dy$<br>
-            • <strong>Disk Method:</strong> $V = \int \pi [R(x)]^2 dx$<br>
-            • <strong>Washer Method:</strong> $V = \int \pi ([R(x)]^2 - [r(x)]^2) dx$
+            • <strong>Disk Method:</strong><br> $$V = \int \pi [R(x)]^2 dx$$<br>
+            • <strong>Washer Method:</strong><br> $$V = \int \pi ([R(x)]^2 - [r(x)]^2) dx$$
         </div>
     </div>
 
@@ -266,7 +241,6 @@
         let currentAxis = 'x';
         let controlsCollapsed = false;
         
-        // 動畫變數
         let isAnimating = false;
         let animationPaused = false;
         let currentSliceCount = 0;
@@ -274,41 +248,28 @@
         let animationInterval = null;
         let cachedSolidData = null;
         
-        // 例題資料庫 (包含精確解)
         const examples = [
-            // 題23: 球體 (x軸)
             { outer: 'sqrt(9-x^2)', inner: '0', a: '-3', b: '3', method: 'disk', axis: 'x', exact: '36π', val: 36 * Math.PI },
-            // 題20: sin*cos (x軸)
             { outer: 'sin(x)*cos(x)', inner: '0', a: '0', b: 'pi/2', method: 'disk', axis: 'x', exact: 'π²/16', val: Math.pow(Math.PI, 2) / 16 },
-            // 題40: Washer (y軸) -> tan(y)
             { outer: '1', inner: 'tan(y)', a: '0', b: 'pi/4', method: 'washer', axis: 'y', exact: 'π²/2 - π', val: (Math.pow(Math.PI, 2)/2) - Math.PI },
-            // 題45: Washer (x軸) -> sec(x)
             { outer: 'sqrt(2)', inner: 'sec(x)', a: '-pi/4', b: 'pi/4', method: 'washer', axis: 'x', exact: 'π² - 2π', val: Math.pow(Math.PI, 2) - 2 * Math.PI }
         ];
         
         function init() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xf0f4f8);
-            
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.set(8, 6, 8);
             camera.lookAt(0, 0, 0);
-            
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true;
             document.getElementById('container').appendChild(renderer.domElement);
             
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
-            
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(10, 10, 10);
-            scene.add(directionalLight);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+            const dl = new THREE.DirectionalLight(0xffffff, 0.8); dl.position.set(10, 10, 10); scene.add(dl);
             
             addAxes();
-            
-            // 加入 OrbitControls (觸控支援)
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
@@ -317,78 +278,56 @@
             generateSolid();
         }
         
-        // --- 介面控制 ---
         function toggleControls() {
             const c = document.getElementById('controls');
-            const btn = document.getElementById('toggleBtn');
-            controlsCollapsed = !controlsCollapsed;
-            c.classList.toggle('collapsed', controlsCollapsed);
-            btn.textContent = controlsCollapsed ? '▶' : '◀';
+            document.getElementById('toggleBtn').textContent = (c.classList.toggle('collapsed')) ? '▶' : '◀';
         }
-
-        function toggleInfoPanel() {
-            const panel = document.getElementById('info-panel');
-            panel.classList.toggle('hidden');
-        }
+        function toggleInfoPanel() { document.getElementById('info-panel').classList.toggle('hidden'); }
 
         function setAxis(axis) {
             currentAxis = axis;
-            document.querySelectorAll('.axis-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.axis-btn').forEach(b => b.classList.remove('active'));
             event.currentTarget.classList.add('active');
-            
-            // 動態更新標籤 (變數對應)
             const v = axis;
             document.getElementById('outerLabel').textContent = `外半徑 R(${v}) =`;
             document.getElementById('innerLabel').textContent = `內半徑 r(${v}) =`;
             document.getElementById('lbLabel').textContent = `下界 ${v === 'x' ? 'a' : 'c'} =`;
             document.getElementById('ubLabel').textContent = `上界 ${v === 'x' ? 'b' : 'd'} =`;
-            
-            // 切換軸時，按鈕文字也要變 (選填，這裡保持簡潔)
         }
 
         function setMethod(method) {
             currentMethod = method;
-            document.querySelectorAll('.method-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
             event.currentTarget.classList.add('active');
-            
-            const innerInputs = [document.getElementById('innerLabel'), document.getElementById('innerFunc')];
-            innerInputs.forEach(el => el.style.display = method === 'washer' ? 'block' : 'none');
+            const disp = method === 'washer' ? 'block' : 'none';
+            document.getElementById('innerLabel').style.display = disp;
+            document.getElementById('innerFunc').style.display = disp;
         }
         
         function updateResolution(val) {
             document.getElementById('resValue').textContent = val;
             document.getElementById('totalSlices').textContent = val;
         }
-
         function updateSpeed(val) {
-            const speeds = ['極慢', '慢速', '中速', '快速', '極快'];
-            const speedMs = [200, 100, 50, 25, 10];
-            document.getElementById('speedValue').textContent = speeds[val-1];
-            animationSpeed = speedMs[val-1];
+            const ms = [200, 100, 50, 25, 10];
+            const txt = ['極慢', '慢速', '中速', '快速', '極快'];
+            document.getElementById('speedValue').textContent = txt[val-1];
+            animationSpeed = ms[val-1];
         }
 
-        // --- 數學運算 ---
         function evaluateFunction(expr, value) {
             try {
-                // 關鍵修復：同時定義 x 和 y，解決變數對應問題
                 const scope = { x: value, y: value, e: Math.E, pi: Math.PI };
-                // 預處理數學語法
-                let cleanExpr = expr.toLowerCase().replace(/ln\(/g, 'log('); 
-                return math.evaluate(cleanExpr, scope);
-            } catch (e) {
-                throw new Error('無法計算: ' + expr);
-            }
+                let clean = expr.toLowerCase().replace(/ln\(/g, 'log(');
+                return math.evaluate(clean, scope);
+            } catch (e) { throw new Error('無法計算: ' + expr); }
         }
         
         function parseBoundary(str) {
-            try {
-                return math.evaluate(str.toLowerCase().replace(/pi/g, Math.PI).replace(/e/g, Math.E));
-            } catch(e) {
-                throw new Error('邊界錯誤');
-            }
+            try { return math.evaluate(str.toLowerCase().replace(/pi/g, Math.PI).replace(/e/g, Math.E)); }
+            catch(e) { throw new Error('邊界錯誤'); }
         }
 
-        // --- 載入範例 ---
         function loadExample(idx) {
             const ex = examples[idx];
             document.getElementById('outerFunc').value = ex.outer;
@@ -396,141 +335,89 @@
             document.getElementById('lowerBound').value = ex.a;
             document.getElementById('upperBound').value = ex.b;
             
-            // 依序設定：軸 -> 方法
             setAxis(ex.axis);
-            // 手動觸發 UI 更新
-            const axisBtns = document.querySelectorAll('.axis-btn');
-            axisBtns.forEach(b => b.classList.remove('active'));
-            axisBtns[ex.axis === 'x' ? 0 : 1].classList.add('active');
-
+            // UI Update
+            document.querySelectorAll('.axis-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.axis-btn')[ex.axis==='x'?0:1].classList.add('active');
+            
             setMethod(ex.method);
-            const methodBtns = document.querySelectorAll('.method-btn');
-            methodBtns.forEach(b => b.classList.remove('active'));
-            methodBtns[ex.method === 'disk' ? 0 : 1].classList.add('active');
+            // UI Update
+            document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.method-btn')[ex.method==='disk'?0:1].classList.add('active');
             
-            // 強制儲存精確解 (用於顯示)
             cachedSolidData = { exactResult: ex.exact };
-            
             generateSolid();
         }
 
-        // --- 3D 生成與計算 ---
         function prepareSolidData() {
             const outerFunc = document.getElementById('outerFunc').value;
             const innerFunc = document.getElementById('innerFunc').value;
             const res = parseInt(document.getElementById('resolution').value);
             const a = parseBoundary(document.getElementById('lowerBound').value);
             const b = parseBoundary(document.getElementById('upperBound').value);
-            
             if (a >= b) throw new Error('下界必須小於上界');
 
-            // 檢查是否為已知範例 (為了顯示精確解)
             let exactStr = null;
-            // 簡單的比對邏輯 (僅供教學演示用)
             examples.forEach(ex => {
                 if (ex.outer === outerFunc && ex.inner === innerFunc && 
                     Math.abs(parseBoundary(ex.a) - a) < 0.001 && 
                     Math.abs(parseBoundary(ex.b) - b) < 0.001 && 
-                    ex.axis === currentAxis) {
-                    exactStr = ex.exact;
-                }
+                    ex.axis === currentAxis) exactStr = ex.exact;
             });
 
-            return { 
-                outerFunc, innerFunc, a, b, res, 
-                exactResult: exactStr,
-                aStr: document.getElementById('lowerBound').value,
-                bStr: document.getElementById('upperBound').value
-            };
+            return { outerFunc, innerFunc, a, b, res, exactResult: exactStr, aStr: document.getElementById('lowerBound').value, bStr: document.getElementById('upperBound').value };
         }
 
         function generateSolidWithSlices(data, limit) {
             if (solid) scene.remove(solid);
-            
             const { outerFunc, innerFunc, a, b, res } = data;
             const segments = 40;
             const step = (b - a) / res;
-            
-            const vertices = [];
-            const indices = [];
-            const colors = [];
-            
-            // 數值積分計算體積 (Riemann Sum approximation for display if exact not found)
+            const vertices = [], indices = [], colors = [];
             let calculatedVolume = 0;
 
             for (let i = 0; i <= limit; i++) {
-                const t = a + i * step; // t 代表 x 或 y
-                
+                const t = a + i * step;
                 let R = Math.abs(evaluateFunction(outerFunc, t));
                 let r = currentMethod === 'washer' ? Math.abs(evaluateFunction(innerFunc, t)) : 0;
+                if (!isFinite(R)) R = 0; if (!isFinite(r)) r = 0;
                 
-                // 安全檢查
-                if (!isFinite(R)) R = 0;
-                if (!isFinite(r)) r = 0;
-                
-                // 累積體積 (僅當不是最後一個斷面時)
-                if (i < limit) {
-                   calculatedVolume += Math.PI * (R*R - r*r) * step;
-                }
+                if (i < limit) calculatedVolume += Math.PI * (R*R - r*r) * step;
 
-                // 建立 3D 頂點
                 for (let j = 0; j <= segments; j++) {
                     const theta = (j / segments) * Math.PI * 2;
-                    const cos = Math.cos(theta);
-                    const sin = Math.sin(theta);
-                    
-                    // 根據軸決定座標 (x, y, z)
-                    // 若繞 x 軸：(t, R*cos, R*sin)
-                    // 若繞 y 軸：(R*cos, t, R*sin)
+                    const cos = Math.cos(theta), sin = Math.sin(theta);
                     const x = currentAxis === 'x' ? t : R * cos;
                     const y = currentAxis === 'x' ? R * cos : t;
                     const z = R * sin;
-                    
                     vertices.push(x, y, z);
                     
-                    // 顏色漸層
-                    colors.push(0.2 + i/res*0.6, 0.4, 0.8, 0.9);
+                    // 材質修正：更鮮豔的漸層
+                    const prog = i / res;
+                    colors.push(0.1 + prog * 0.5, 0.3 + prog * 0.2, 0.9, 0.8);
 
-                    // 如果是 Washer，處理內圈
                     if (currentMethod === 'washer' && r > 0.01) {
                         const ix = currentAxis === 'x' ? t : r * cos;
                         const iy = currentAxis === 'x' ? r * cos : t;
                         const iz = r * sin;
                         vertices.push(ix, iy, iz);
-                        colors.push(0.8, 0.3, 0.3, 0.9); // 內圈紅色
+                        colors.push(0.8, 0.2, 0.2, 0.8);
                     }
                 }
             }
             
-            // 建立面 (Indices)
-            const stride = currentMethod === 'washer' && Math.abs(evaluateFunction(innerFunc, a)) > 0.01 ? 2 : 1; 
-            // 簡化邏輯：為了穩定性，這裡假設總是畫兩層如果 Washer 被選中
-            // 實際幾何構建較複雜，為保持代碼穩定，沿用你原本的邏輯但稍微調整
-            
             const ptsPerSlice = (segments + 1) * (currentMethod === 'washer' ? 2 : 1);
-
             for (let i = 0; i < limit; i++) {
                 for (let j = 0; j < segments; j++) {
                     const base = i * ptsPerSlice + j * (currentMethod === 'washer' ? 2 : 1);
                     const nextBase = (i + 1) * ptsPerSlice + j * (currentMethod === 'washer' ? 2 : 1);
                     
-                    // 外表面
-                    const p1 = base;
-                    const p2 = base + (currentMethod === 'washer' ? 2 : 1); // 下一個點
-                    const p3 = nextBase;
-                    const p4 = nextBase + (currentMethod === 'washer' ? 2 : 1);
-                    
-                    // 這裡幾何索引邏輯比較繁瑣，使用簡化的 Strip 邏輯
-                    // 若是 Washer，vertices 排列是: [Outer, Inner, Outer, Inner...]
                     if (currentMethod === 'washer') {
-                        // 外面
                         indices.push(base, nextBase, base+2);
                         indices.push(base+2, nextBase, nextBase+2);
-                        // 內面 (反向)
                         indices.push(base+1, base+3, nextBase+1);
                         indices.push(base+3, nextBase+3, nextBase+1);
                     } else {
-                        // 只有外層
                         indices.push(base, nextBase, base+1);
                         indices.push(base+1, nextBase, nextBase+1);
                     }
@@ -540,19 +427,17 @@
             const geom = new THREE.BufferGeometry();
             geom.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
             geom.setAttribute('color', new THREE.Float32BufferAttribute(colors, 4));
-            // 只有當有足夠的切片時才設定索引
             if (indices.length > 0) geom.setIndex(indices);
-            
             geom.computeVertexNormals();
             
+            // 材質修正：高光、不透明度
             const mat = new THREE.MeshPhongMaterial({
                 vertexColors: true, side: THREE.DoubleSide,
-                transparent: true, opacity: 0.85, shininess: 80
+                transparent: true, opacity: 0.75, shininess: 80, specular: 0x444444
             });
             
             solid = new THREE.Mesh(geom, mat);
             scene.add(solid);
-            
             return calculatedVolume;
         }
 
@@ -560,148 +445,95 @@
             document.getElementById('errorMsg').style.display = 'none';
             try {
                 const data = prepareSolidData();
-                // 若有快取 (loadExample 設定的)，優先使用
                 if (cachedSolidData && cachedSolidData.exactResult) {
                     data.exactResult = cachedSolidData.exactResult;
-                    cachedSolidData = null; // 用完重置
+                    cachedSolidData = null;
                 }
-                
                 const vol = generateSolidWithSlices(data, data.res);
                 
                 document.getElementById('result').style.display = 'block';
-                
-                // 顯示邏輯：如果有精確解，顯示字串；否則顯示高精度數值
                 if (data.exactResult) {
                     document.getElementById('volumeValue').textContent = data.exactResult;
                 } else {
-                    // 這裡「假裝」是定積分答案，顯示 6 位小數
                     document.getElementById('volumeValue').textContent = vol.toFixed(6);
                 }
 
-                // 更新公式顯示
                 const v = currentAxis === 'x' ? 'x' : 'y';
                 const rText = currentMethod === 'disk' ? `[R(${v})]^2` : `([R(${v})]^2 - [r(${v})]^2)`;
-                document.getElementById('formulaDisplay').textContent = 
-                    `V = ∫[${data.aStr}, ${data.bStr}] π ${rText} d${v}`;
+                const formulaEl = document.getElementById('formulaDisplay');
+                formulaEl.textContent = `$$V = \\int_{${data.aStr}}^{${data.bStr}} \\pi ${rText} d${v}$$`;
+                
+                if (window.MathJax) MathJax.typesetPromise();
 
-                cachedSolidData = data; // 存給動畫用
-
+                cachedSolidData = data;
             } catch (e) {
                 const err = document.getElementById('errorMsg');
                 err.textContent = e.message; err.style.display = 'block';
             }
         }
 
-        // --- 動畫邏輯 ---
         function startAnimation() {
             if (isAnimating && !animationPaused) return;
             try {
-                if (!cachedSolidData) generateSolid(); // 確保有資料
+                if (!cachedSolidData) generateSolid();
                 isAnimating = true; animationPaused = false;
                 if (!animationPaused) currentSliceCount = 0;
-                
                 document.getElementById('animProgress').style.display = 'block';
                 updateAnimBtns(true);
-
                 animationInterval = setInterval(() => {
                     if (currentSliceCount <= cachedSolidData.res) {
                         generateSolidWithSlices(cachedSolidData, currentSliceCount);
-                        updateProgress(currentSliceCount, cachedSolidData.res);
+                        document.getElementById('currentSlices').textContent = currentSliceCount;
+                        document.getElementById('totalSlices').textContent = cachedSolidData.res;
+                        document.getElementById('progressFill').style.width = (currentSliceCount/cachedSolidData.res*100) + '%';
                         currentSliceCount++;
                     } else {
-                        if(document.getElementById('loopCheck')?.checked) { // 暫無循環 checkbox，預留
-                             currentSliceCount = 0;
-                        } else {
-                            stopAnimation();
-                            // 動畫結束後，重新生成完整且正確的體積數值顯示
-                            generateSolid(); 
-                        }
+                        stopAnimation();
+                        generateSolid();
                     }
                 }, animationSpeed);
             } catch(e) { stopAnimation(); }
         }
         
-        function updateProgress(curr, total) {
-            document.getElementById('currentSlices').textContent = curr;
-            document.getElementById('totalSlices').textContent = total;
-            document.getElementById('progressFill').style.width = (curr/total*100) + '%';
-        }
-
-        function pauseAnimation() {
-            isAnimating = false; animationPaused = true;
-            clearInterval(animationInterval); updateAnimBtns(false);
-        }
-
-        function stopAnimation() {
-            isAnimating = false; animationPaused = false;
-            clearInterval(animationInterval); updateAnimBtns(false);
-            currentSliceCount = 0;
-        }
-
-        function resetAnimation() {
-            stopAnimation();
-            generateSolidWithSlices(cachedSolidData, 0);
-            updateProgress(0, cachedSolidData.res);
-        }
-
+        function pauseAnimation() { isAnimating = false; animationPaused = true; clearInterval(animationInterval); updateAnimBtns(false); }
+        function stopAnimation() { isAnimating = false; animationPaused = false; clearInterval(animationInterval); updateAnimBtns(false); currentSliceCount = 0; }
+        function resetAnimation() { stopAnimation(); generateSolidWithSlices(cachedSolidData, 0); document.getElementById('progressFill').style.width = '0%'; }
         function updateAnimBtns(isPlaying) {
-            const [play, pause, stop] = document.querySelectorAll('.anim-btn');
-            play.disabled = isPlaying;
-            pause.disabled = !isPlaying;
-            stop.disabled = !isPlaying;
+            const btns = document.querySelectorAll('.anim-btn');
+            btns[0].disabled = isPlaying; btns[1].disabled = !isPlaying; btns[2].disabled = !isPlaying;
         }
 
-        // --- 3D 場景 ---
         function addAxes() {
-            const axes = new THREE.Group();
-            const len = 12;
-            
-            // 輔助函式：畫軸
-            const mkLine = (color, axis) => {
-                const mat = new THREE.LineBasicMaterial({ color: color, linewidth: 2 });
-                const pts = [];
-                if(axis==='x') pts.push(new THREE.Vector3(-len,0,0), new THREE.Vector3(len,0,0));
-                if(axis==='y') pts.push(new THREE.Vector3(0,-len,0), new THREE.Vector3(0,len,0));
-                if(axis==='z') pts.push(new THREE.Vector3(0,0,-len), new THREE.Vector3(0,0,len));
-                return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+            const axes = new THREE.Group(); const len = 12;
+            const mkLine = (c, p1, p2) => {
+                const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...p1), new THREE.Vector3(...p2)]);
+                return new THREE.Line(g, new THREE.LineBasicMaterial({color:c, linewidth:2}));
             };
-            
-            axes.add(mkLine(0xff0000, 'x')); // X 紅
-            axes.add(mkLine(0x00ff00, 'y')); // Y 綠
-            axes.add(mkLine(0x0000ff, 'z')); // Z 藍
+            axes.add(mkLine(0xff0000,[-len,0,0],[len,0,0]));
+            axes.add(mkLine(0x00ff00,[0,-len,0],[0,len,0]));
+            axes.add(mkLine(0x0000ff,[0,0,-len],[0,0,len]));
 
-            // 建立文字貼圖
-            const mkSprite = (txt, color, x, y, z) => {
+            const mkSprite = (txt, c, x, y, z) => {
                 const cvs = document.createElement('canvas'); cvs.width=64; cvs.height=64;
                 const ctx = cvs.getContext('2d');
-                ctx.font='bold 48px Arial'; ctx.fillStyle=color; ctx.fillText(txt, 10, 50);
+                ctx.font='bold 48px Arial'; ctx.fillStyle=c; ctx.fillText(txt, 10, 50);
                 const tex = new THREE.CanvasTexture(cvs);
-                const mat = new THREE.SpriteMaterial({ map: tex });
-                const sp = new THREE.Sprite(mat);
-                sp.position.set(x, y, z); sp.scale.set(2, 2, 1);
+                const mat = new THREE.SpriteMaterial({map:tex});
+                const sp = new THREE.Sprite(mat); sp.position.set(x,y,z); sp.scale.set(2,2,1);
                 return sp;
             };
-            
             axes.add(mkSprite('X', '#f00', len+1, 0, 0));
             axes.add(mkSprite('Y', '#0f0', 0, len+1, 0));
             axes.add(mkSprite('Z', '#00f', 0, 0, len+1));
-
             scene.add(axes);
             scene.add(new THREE.GridHelper(24, 24, 0xdddddd, 0xeeeeee));
         }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
-        }
         
+        function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight);
         });
-        
         init();
     </script>
 </body>
