@@ -7,6 +7,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -31,7 +34,7 @@
             cursor: pointer; font-size: 20px; display: flex; justify-content: center; align-items: center;
         }
         
-        /* Info Panel 樣式 */
+        /* 右下角說明面板 (可縮小) */
         #info-container { position: absolute; bottom: 20px; right: 20px; z-index: 101; display: flex; flex-direction: column; align-items: flex-end; }
         #info-panel {
             background: rgba(255,255,255,0.95); padding: 20px;
@@ -39,14 +42,14 @@
             box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-size: 13px;
             transition: all 0.3s; transform-origin: bottom right;
         }
-        #info-panel.hidden { opacity: 0; transform: scale(0.9) translateY(20px); pointer-events: none; }
+        #info-panel.hidden { opacity: 0; transform: scale(0.9) translateY(20px); pointer-events: none; display: none; }
         #infoToggleBtn {
             width: 36px; height: 36px; border-radius: 50%; background: white;
             border: none; font-weight: bold; color: #1e3c72; cursor: pointer;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2); margin-bottom: 10px;
+            display: flex; align-items: center; justify-content: center;
         }
 
-        /* 通用 UI */
         h1 { color: #1e3c72; margin-bottom: 5px; font-size: 24px; }
         .type-btn { padding: 10px; border: 2px solid #ddd; background: #f9f9f9; cursor: pointer; border-radius: 6px; text-align: center; font-size: 12px; }
         .type-btn.active { background: #1e3c72; color: white; border-color: #1e3c72; }
@@ -115,7 +118,7 @@
         <div id="result" class="result" style="display:none;">
             <div>體積 (Volume)</div>
             <div class="value" id="volRes">0</div>
-            <div id="formula" style="font-size:11px; opacity:0.8; margin-top:5px; font-family:monospace;"></div>
+            <div id="formula" style="font-size:13px; opacity:0.9; margin-top:5px; font-family:'Times New Roman', serif;"></div>
         </div>
     </div>
 
@@ -127,7 +130,7 @@
             • <strong>雙指/滾輪：</strong>縮放<br>
             • <strong>雙指/右鍵：</strong>平移<br><br>
             <strong>📖 原理</strong><br>
-            $V = \int_a^b A(x) dx$<br>
+            $$V = \int_a^b A(x) dx$$<br>
             $A(x)$ 為截面面積，取決於形狀與底邊長。
         </div>
     </div>
@@ -196,7 +199,6 @@
             document.getElementById('a').value = ex.s;
             document.getElementById('b').value = ex.e;
             setType(ex.type);
-            // 強制顯示精確解
             document.getElementById('volRes').dataset.exact = ex.ans; 
             runSimulation();
         }
@@ -208,25 +210,25 @@
 
         function createSlice(x, w, type, color) {
             const shape = new THREE.Shape();
-            // 在 YZ 平面上繪製
             if(type === 'square') {
                 shape.moveTo(-w/2, -w/2); shape.lineTo(w/2, -w/2);
                 shape.lineTo(w/2, w/2); shape.lineTo(-w/2, w/2);
             } else if(type === 'triangle') {
                 const h = w * Math.sqrt(3)/2;
                 shape.moveTo(-w/2, 0); shape.lineTo(w/2, 0); shape.lineTo(0, h);
-            } else { // semicircle
+            } else { 
                 shape.absarc(0,0,w/2,0,Math.PI,false);
             }
             
             const geom = new THREE.ExtrudeGeometry(shape, { depth: 0.05, bevelEnabled: false });
-            // 旋轉幾何體以符合座標系：截面垂直於 X 軸
             geom.rotateY(Math.PI/2); 
-            // 根據形狀調整位置
-            if(type === 'semicircle') geom.rotateX(Math.PI); // 轉正
-            
+            if(type === 'semicircle') geom.rotateX(Math.PI);
             geom.translate(x, 0, 0);
-            return new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color:color, transparent:true, opacity:0.8}));
+            
+            // 材質修正：降低透明度，提升質感
+            return new THREE.Mesh(geom, new THREE.MeshPhongMaterial({
+                color:color, transparent:true, opacity:0.75, shininess:80, specular:0x444444
+            }));
         }
 
         function runSimulation() {
@@ -249,7 +251,6 @@
                     const mesh = createSlice(x, h, currentType, new THREE.Color().setHSL(i/n*0.8, 0.7, 0.5));
                     solid.add(mesh);
                     
-                    // 累加體積 (Riemann Sum)
                     let area = 0;
                     if(currentType === 'square') area = h*h;
                     else if(currentType === 'triangle') area = (Math.sqrt(3)/4)*h*h;
@@ -261,24 +262,24 @@
             const resDiv = document.getElementById('result');
             resDiv.style.display = 'block';
             
-            // 顯示邏輯：如果有預設的精確解就用，否則顯示計算值
             const exact = document.getElementById('volRes').dataset.exact;
             if(exact) {
                 document.getElementById('volRes').textContent = exact;
-                // 清除 dataset 以免影響下次自訂計算
                 document.getElementById('volRes').removeAttribute('data-exact');
             } else {
                 document.getElementById('volRes').textContent = vol.toFixed(4);
             }
             
             let fText = "";
-            if(currentType==='square') fText="A(x) = s²";
-            else if(currentType==='triangle') fText="A(x) = (√3/4)s²";
-            else fText="A(x) = (π/8)s²";
-            document.getElementById('formula').textContent = fText + " (s = Top - Bottom)";
+            if(currentType==='square') fText="A(x) = s^2";
+            else if(currentType==='triangle') fText="A(x) = \\frac{\\sqrt{3}}{4}s^2";
+            else fText="A(x) = \\frac{\\pi}{8}s^2";
+            
+            document.getElementById('formula').textContent = `$$${fText}$$ (s = Top - Bottom)`;
+            
+            if(window.MathJax) MathJax.typesetPromise();
         }
 
-        // 簡易動畫邏輯
         function playAnim() {
             if(animId) return;
             scene.remove(solid); solid = new THREE.Group(); scene.add(solid);
@@ -288,9 +289,8 @@
             
             function loop() {
                 if(isPaused) return;
-                if(i > n) { stopAnim(); runSimulation(); return; } // 結束後重繪完整版
+                if(i > n) { stopAnim(); runSimulation(); return; } 
                 
-                // 這裡重複一部分 runSimulation 的邏輯來逐個添加
                 const topF = document.getElementById('top').value;
                 const botF = document.getElementById('bot').value;
                 const start = getVal(document.getElementById('a').value,0);
