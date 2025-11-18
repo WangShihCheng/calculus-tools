@@ -3,1010 +3,314 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cross-Section 截面法視覺化</title>
+    <title>截面法體積視覺化</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             overflow: hidden;
         }
-        #container {
-            width: 100vw;
-            height: 100vh;
-            position: relative;
-        }
+        #container { width: 100vw; height: 100vh; }
+        
         #controls {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(255, 255, 255, 0.98);
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            max-width: 450px;
-            max-height: 90vh;
-            overflow-y: auto;
-            z-index: 100;
-            transition: transform 0.3s ease, opacity 0.3s ease;
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.98); padding: 25px;
+            border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 450px; max-height: 90vh; overflow-y: auto;
+            transition: transform 0.3s; z-index: 100;
         }
-        #controls.collapsed {
-            transform: translateX(-420px);
-            opacity: 0.3;
-        }
+        #controls.collapsed { transform: translateX(-420px); opacity: 0.3; }
         #toggleBtn {
-            position: absolute;
-            right: -45px;
-            top: 20px;
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            border: none;
-            border-radius: 0 8px 8px 0;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s;
+            position: absolute; right: -45px; top: 20px;
+            width: 40px; height: 40px; background: #1e3c72;
+            color: white; border: none; border-radius: 0 8px 8px 0;
+            cursor: pointer; font-size: 20px; display: flex; justify-content: center; align-items: center;
         }
-        #toggleBtn:hover {
-            background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%);
-            transform: scale(1.1);
-        }
-        h1 {
-            color: #1e3c72;
-            margin-bottom: 8px;
-            font-size: 26px;
-        }
-        .subtitle {
-            color: #666;
-            font-size: 13px;
-            margin-bottom: 20px;
-        }
-        .section-type {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin: 15px 0;
-        }
-        .type-btn {
-            padding: 12px 8px;
-            background: #f0f0f0;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 12px;
-            font-weight: 600;
-            text-align: center;
-        }
-        .type-btn.active {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
-            border-color: #1e3c72;
-        }
-        label {
-            display: block;
-            margin: 15px 0 5px;
-            font-weight: 600;
-            color: #333;
-            font-size: 14px;
-        }
-        input[type="text"] {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 14px;
-            font-family: 'Courier New', monospace;
-            transition: border-color 0.3s;
-        }
-        input:focus {
-            outline: none;
-            border-color: #2a5298;
-        }
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-        button.main-btn {
-            width: 100%;
-            padding: 14px;
-            margin-top: 15px;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            transition: transform 0.2s;
-        }
-        button.main-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(30, 60, 114, 0.4);
-        }
-        .result {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
-            text-align: center;
-        }
-        .result h3 {
-            font-size: 16px;
-            margin-bottom: 10px;
-        }
-        .result .value {
-            font-size: 28px;
-            font-weight: bold;
-            margin: 8px 0;
-        }
-        .formula {
-            font-family: 'Courier New', monospace;
-            background: rgba(255,255,255,0.2);
-            padding: 8px;
-            border-radius: 5px;
-            font-size: 12px;
-            margin-top: 8px;
-        }
-        .examples {
-            background: #e8f4f8;
-            padding: 12px;
-            border-radius: 8px;
-            margin: 15px 0;
-            border: 2px solid #2a5298;
-        }
-        .examples h4 {
-            color: #1e3c72;
-            font-size: 13px;
-            margin-bottom: 8px;
-        }
-        .example-btn {
-            display: inline-block;
-            padding: 6px 12px;
-            margin: 4px;
-            background: white;
-            border: 2px solid #2a5298;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: 600;
-            color: #1e3c72;
-            transition: all 0.2s;
-        }
-        .example-btn:hover {
-            background: #2a5298;
-            color: white;
-        }
-        .error {
-            background: #ffebee;
-            color: #c62828;
-            padding: 10px;
-            border-radius: 6px;
-            margin-top: 10px;
-            font-size: 12px;
-            border: 2px solid #ef5350;
-        }
-        .animation-controls {
-            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            border: 2px solid #4caf50;
-        }
-        .animation-controls h4 {
-            color: #2e7d32;
-            font-size: 15px;
-            margin-bottom: 12px;
-        }
-        .animation-progress {
-            background: #fff;
-            padding: 12px;
-            border-radius: 8px;
-            margin: 10px 0;
-            border: 2px solid #81c784;
-        }
-        .progress-bar {
-            width: 100%;
-            height: 24px;
-            background: #e0e0e0;
-            border-radius: 12px;
-            overflow: hidden;
-            margin: 8px 0;
-        }
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #4caf50 0%, #81c784 100%);
-            transition: width 0.1s linear;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 12px;
-        }
-        .anim-btn-group {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-top: 10px;
-        }
-        .anim-btn {
-            padding: 10px;
-            border: none;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 12px;
-        }
-        .anim-btn.play {
-            background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
-            color: white;
-        }
-        .anim-btn.pause {
-            background: linear-gradient(135deg, #ff9800 0%, #ffb74d 100%);
-            color: white;
-        }
-        .anim-btn.stop {
-            background: linear-gradient(135deg, #f44336 0%, #ef5350 100%);
-            color: white;
-        }
-        .anim-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 3px 8px rgba(0,0,0,0.2);
-        }
-        .anim-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-        .speed-control {
-            margin-top: 10px;
-        }
-        input[type="range"] {
-            width: 100%;
-            height: 6px;
-            border-radius: 3px;
-            background: #ddd;
-            outline: none;
-        }
-        input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-            margin-right: 8px;
-        }
-        .loop-control {
-            display: flex;
-            align-items: center;
-            margin-top: 10px;
-            padding: 8px;
-            background: white;
-            border-radius: 6px;
-        }
-        .info {
-            background: #fff3e0;
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 15px;
-            font-size: 12px;
-            line-height: 1.6;
-            color: #e65100;
-            border: 2px solid #ffb74d;
-        }
+        
+        /* Info Panel 樣式 */
+        #info-container { position: absolute; bottom: 20px; right: 20px; z-index: 101; display: flex; flex-direction: column; align-items: flex-end; }
         #info-panel {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-            font-size: 13px;
-            color: #333;
-            max-width: 350px;
-            line-height: 1.8;
+            background: rgba(255,255,255,0.95); padding: 20px;
+            border-radius: 12px; max-width: 350px; line-height: 1.8;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-size: 13px;
+            transition: all 0.3s; transform-origin: bottom right;
         }
+        #info-panel.hidden { opacity: 0; transform: scale(0.9) translateY(20px); pointer-events: none; }
+        #infoToggleBtn {
+            width: 36px; height: 36px; border-radius: 50%; background: white;
+            border: none; font-weight: bold; color: #1e3c72; cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2); margin-bottom: 10px;
+        }
+
+        /* 通用 UI */
+        h1 { color: #1e3c72; margin-bottom: 5px; font-size: 24px; }
+        .type-btn { padding: 10px; border: 2px solid #ddd; background: #f9f9f9; cursor: pointer; border-radius: 6px; text-align: center; font-size: 12px; }
+        .type-btn.active { background: #1e3c72; color: white; border-color: #1e3c72; }
+        .section-type { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 15px 0; }
+        input[type="text"] { width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 6px; margin-bottom: 10px; font-family: monospace; }
+        .main-btn { width: 100%; padding: 12px; background: #1e3c72; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 10px; }
+        
+        .result { background: #5c6bc0; color: white; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: center; }
+        .result .value { font-size: 24px; font-weight: bold; }
+        
+        .examples { background: #e3f2fd; padding: 10px; border-radius: 8px; margin: 10px 0; }
+        .example-btn { display: inline-block; padding: 5px 10px; margin: 3px; background: white; border: 1px solid #1565c0; color: #1565c0; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        
+        .anim-controls { background: #e8f5e9; padding: 10px; border-radius: 8px; margin-top: 20px; border: 1px solid #a5d6a7; }
+        .anim-btn-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 5px; }
+        .anim-btn { padding: 8px; border: none; border-radius: 4px; cursor: pointer; color: white; }
+        .play { background: #43a047; } .pause { background: #fb8c00; } .stop { background: #e53935; }
+        .progress-bar { height: 10px; background: #ccc; border-radius: 5px; overflow: hidden; margin: 5px 0; }
+        .fill { height: 100%; background: #43a047; width: 0%; transition: width 0.1s; }
     </style>
 </head>
 <body>
     <div id="container"></div>
-    
+
     <div id="controls">
-        <button id="toggleBtn" onclick="toggleControls()">◀</button>
-        
-        <h1>📐 Cross-Section 截面法</h1>
-        <p class="subtitle">Volume by Cross-Sections</p>
+        <button id="toggleBtn" onclick="document.getElementById('controls').classList.toggle('collapsed')">◀</button>
+        <h1>📐 截面法體積計算</h1>
+        <p style="color:#666; font-size:13px;">Volume by Cross-Sections</p>
         
         <div class="examples">
-            <h4>📚 作業範例（基於 PDF）：</h4>
+            <span style="font-size:12px; font-weight:bold; color:#1565c0;">📚 課本例題：</span><br>
             <span class="example-btn" onclick="loadExample(0)">題1: 正方形</span>
             <span class="example-btn" onclick="loadExample(1)">題5a: 等邊三角</span>
             <span class="example-btn" onclick="loadExample(2)">題5b: 正方形</span>
             <span class="example-btn" onclick="loadExample(3)">題8b: 半圓</span>
         </div>
         
-        <label>截面類型：</label>
+        <label style="display:block; margin:10px 0 5px; font-weight:bold;">截面形狀：</label>
         <div class="section-type">
-            <div class="type-btn active" onclick="setSectionType('square')">
-                正方形<br>Square
-            </div>
-            <div class="type-btn" onclick="setSectionType('triangle')">
-                等邊三角<br>Triangle
-            </div>
-            <div class="type-btn" onclick="setSectionType('semicircle')">
-                半圓<br>Semicircle
-            </div>
+            <div class="type-btn active" onclick="setType('square')">正方形<br>Square</div>
+            <div class="type-btn" onclick="setType('triangle')">等邊三角<br>Triangle</div>
+            <div class="type-btn" onclick="setType('semicircle')">半圓<br>Semicircle</div>
         </div>
         
-        <label>上曲線 y_top =</label>
-        <input type="text" id="topFunc" value="sqrt(x)" placeholder="sqrt(x), 2, sin(x)">
-        
-        <label>下曲線 y_bottom =</label>
-        <input type="text" id="bottomFunc" value="-sqrt(x)" placeholder="-sqrt(x), 0, -sin(x)">
-        
-        <div class="grid-2">
-            <div>
-                <label>下界 a =</label>
-                <input type="text" id="lowerBound" value="0">
-            </div>
-            <div>
-                <label>上界 b =</label>
-                <input type="text" id="upperBound" value="4">
-            </div>
+        <label>上函數 (Top):</label> <input type="text" id="top" value="sqrt(x)">
+        <label>下函數 (Bottom):</label> <input type="text" id="bot" value="-sqrt(x)">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div><label>下界 a:</label><input type="text" id="a" value="0"></div>
+            <div><label>上界 b:</label><input type="text" id="b" value="4"></div>
         </div>
+        <label>切片數：<span id="sliceDisplay">30</span></label>
+        <input type="range" id="slices" min="10" max="100" value="30" style="width:100%" oninput="document.getElementById('sliceDisplay').textContent=this.value">
         
-        <label>切片數量：<span id="sliceValue">30</span></label>
-        <input type="range" id="sliceCount" min="10" max="80" value="30" 
-               oninput="updateSliceCount(this.value)">
+        <button class="main-btn" onclick="runSimulation()">🔄 計算與繪製</button>
         
-        <button class="main-btn" onclick="generateSolid()">🔄 生成完整固體</button>
-        
-        <div class="animation-controls">
-            <h4>🎬 動畫控制</h4>
-            
-            <div class="animation-progress" id="animProgress" style="display:none;">
-                <div style="font-size: 11px; color: #666; margin-bottom: 5px;">
-                    當前切片：<strong id="currentSlices">0</strong> / <strong id="totalSlices">30</strong>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill" style="width: 0%;">0%</div>
-                </div>
-            </div>
-            
+        <div class="anim-controls">
+            <div style="font-size:13px; font-weight:bold; color:#2e7d32;">🎬 動畫</div>
+            <div class="progress-bar"><div class="fill" id="pBar"></div></div>
             <div class="anim-btn-group">
-                <button class="anim-btn play" onclick="startAnimation()">▶ 播放</button>
-                <button class="anim-btn pause" onclick="pauseAnimation()" disabled>⏸ 暫停</button>
-                <button class="anim-btn stop" onclick="stopAnimation()" disabled>⏹ 停止</button>
-            </div>
-            
-            <div class="speed-control">
-                <label style="font-size: 12px;">速度：<span id="speedLabel">中速</span></label>
-                <input type="range" id="animSpeed" min="1" max="3" value="2" 
-                       oninput="updateSpeed(this.value)">
-            </div>
-            
-            <div class="loop-control">
-                <input type="checkbox" id="loopCheck">
-                <label style="margin: 0; font-size: 13px; color: #2e7d32;">重複播放</label>
+                <button class="anim-btn play" onclick="playAnim()">播放</button>
+                <button class="anim-btn pause" onclick="pauseAnim()">暫停</button>
+                <button class="anim-btn stop" onclick="stopAnim()">停止</button>
             </div>
         </div>
-        
-        <div id="errorMsg" class="error" style="display:none;"></div>
-        
-        <div class="result" id="result" style="display:none;">
-            <h3>計算體積</h3>
-            <div class="value" id="volumeValue">0</div>
-            <div class="formula" id="formulaDisplay"></div>
-        </div>
-        
-        <div class="info">
-            <strong>💡 說明：</strong><br>
-            • 截面垂直於 x 軸<br>
-            • 基底長度 = 上曲線 - 下曲線<br>
-            • 正方形：A = s²<br>
-            • 等邊三角：A = (√3/4)s²<br>
-            • 半圓：A = (π/8)s²
+
+        <div id="result" class="result" style="display:none;">
+            <div>體積 (Volume)</div>
+            <div class="value" id="volRes">0</div>
+            <div id="formula" style="font-size:11px; opacity:0.8; margin-top:5px; font-family:monospace;"></div>
         </div>
     </div>
-    
-    <div id="info-panel">
-        <strong>🎨 操作說明</strong><br>
-        <strong>拖曳/觸控：</strong>旋轉 3D 視角<br>
-        <strong>滾輪/雙指：</strong>縮放畫面<br>
-        <strong>動畫：</strong>觀看切片逐個堆疊<br>
-        <strong>重複播放：</strong>自動循環動畫<br>
-        <br>
-        <strong>📖 Cross-Section Method：</strong><br>
-        將固體切成許多薄片，計算每片面積，再積分求體積。
+
+    <div id="info-container">
+        <button id="infoToggleBtn" onclick="document.getElementById('info-panel').classList.toggle('hidden')">?</button>
+        <div id="info-panel">
+            <strong>🎨 操作說明</strong><br>
+            • <strong>單指/左鍵：</strong>旋轉<br>
+            • <strong>雙指/滾輪：</strong>縮放<br>
+            • <strong>雙指/右鍵：</strong>平移<br><br>
+            <strong>📖 原理</strong><br>
+            $V = \int_a^b A(x) dx$<br>
+            $A(x)$ 為截面面積，取決於形狀與底邊長。
+        </div>
     </div>
 
     <script>
-        let scene, camera, renderer, solidGroup;
-        let currentSectionType = 'square';
-        let controlsCollapsed = false;
-        let controls; // 定義控制器變數
-        
-        // 動畫變數
-        let isAnimating = false;
-        let animationPaused = false;
-        let currentSliceIndex = 0;
-        let animationSpeed = 50;
-        let animationInterval = null;
-        let cachedData = null;
-        let isLooping = false;
+        let scene, camera, renderer, controls, solid;
+        let currentType = 'square';
+        let animId = null;
+        let isPaused = false;
         
         const examples = [
-            // 題1: 正方形截面
-            { top: 'sqrt(x)', bottom: '-sqrt(x)', a: '0', b: '4', type: 'square' },
-            // 題5a: 等邊三角形截面
-            { top: '2*sqrt(sin(x))', bottom: '0', a: '0', b: 'pi', type: 'triangle' },
-            // 題5b: 正方形截面
-            { top: '2*sqrt(sin(x))', bottom: '0', a: '0', b: 'pi', type: 'square' },
-            // 題8b: 半圓截面
-            { top: 'sqrt(x)', bottom: 'x/2', a: '0', b: '4', type: 'semicircle' }
+            { t:'sqrt(x)', b:'-sqrt(x)', s:'0', e:'4', type:'square', ans:'16' },
+            { t:'2*sqrt(sin(x))', b:'0', s:'0', e:'pi', type:'triangle', ans:'2√3' },
+            { t:'2*sqrt(sin(x))', b:'0', s:'0', e:'pi', type:'square', ans:'8' },
+            { t:'sqrt(x)', b:'x/2', s:'0', e:'4', type:'semicircle', ans:'π/15' }
         ];
-        
-        function toggleControls() {
-            const controls = document.getElementById('controls');
-            const btn = document.getElementById('toggleBtn');
-            controlsCollapsed = !controlsCollapsed;
-            
-            if (controlsCollapsed) {
-                controls.classList.add('collapsed');
-                btn.textContent = '▶';
-            } else {
-                controls.classList.remove('collapsed');
-                btn.textContent = '◀';
-            }
-        }
-        
-        function updateSliceCount(value) {
-            document.getElementById('sliceValue').textContent = value;
-            document.getElementById('totalSlices').textContent = value;
-        }
-        
-        function updateSpeed(value) {
-            const speeds = ['慢速', '中速', '快速'];
-            const speedMs = [100, 50, 20];
-            document.getElementById('speedLabel').textContent = speeds[value - 1];
-            animationSpeed = speedMs[value - 1];
-        }
-        
-        function setSectionType(type) {
-            currentSectionType = type;
-            document.querySelectorAll('.type-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-        }
-        
-        function loadExample(index) {
-            const ex = examples[index];
-            document.getElementById('topFunc').value = ex.top;
-            document.getElementById('bottomFunc').value = ex.bottom;
-            document.getElementById('lowerBound').value = ex.a;
-            document.getElementById('upperBound').value = ex.b;
-            
-            // 設置截面類型
-            currentSectionType = ex.type;
-            document.querySelectorAll('.type-btn').forEach((btn, idx) => {
-                btn.classList.remove('active');
-                if ((ex.type === 'square' && idx === 0) ||
-                    (ex.type === 'triangle' && idx === 1) ||
-                    (ex.type === 'semicircle' && idx === 2)) {
-                    btn.classList.add('active');
-                }
-            });
-            
-            generateSolid();
-        }
-        
+
         function init() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xf0f4f8);
-            
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(10, 8, 10);
-            camera.lookAt(0, 0, 0);
-            
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true;
+            scene = new THREE.Scene(); scene.background = new THREE.Color(0xf0f4f8);
+            camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 1000);
+            camera.position.set(8, 5, 8);
+            renderer = new THREE.WebGLRenderer({antialias:true});
+            renderer.setSize(innerWidth, innerHeight);
             document.getElementById('container').appendChild(renderer.domElement);
             
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-            scene.add(ambientLight);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+            const dl = new THREE.DirectionalLight(0xffffff, 0.8); dl.position.set(5,10,7); scene.add(dl);
             
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
-            directionalLight.position.set(10, 10, 10);
-            scene.add(directionalLight);
-            
-            const pointLight = new THREE.PointLight(0xffffff, 0.4);
-            pointLight.position.set(-10, 5, -10);
-            scene.add(pointLight);
-            
-            addAxes();
-            
-            // --- 控制器修改開始 ---
-            // 使用 OrbitControls 取代手動事件監聽
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true; // 啟用阻尼，讓旋轉更平滑
-            controls.dampingFactor = 0.05;
-            // --- 控制器修改結束 ---
+            // 座標軸
+            const axes = new THREE.Group();
+            const mkLine = (c,p1,p2) => {
+                const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...p1), new THREE.Vector3(...p2)]);
+                return new THREE.Line(g, new THREE.LineBasicMaterial({color:c, linewidth:2}));
+            }
+            axes.add(mkLine(0xff0000,[-10,0,0],[10,0,0]));
+            axes.add(mkLine(0x00ff00,[0,-10,0],[0,10,0]));
+            axes.add(mkLine(0x0000ff,[0,0,-10],[0,0,10]));
+            scene.add(axes);
+            scene.add(new THREE.GridHelper(20,20,0xcccccc,0xeeeeee));
 
-            animate();
-            generateSolid();
-        }
-        
-        function createTextSprite(text, color) {
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.width = 128;
-            canvas.height = 128;
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
             
-            context.fillStyle = color;
-            context.font = 'Bold 80px Arial';
-            context.textAlign = 'center';
-            context.textBaseline = 'middle';
-            context.fillText(text, 64, 64);
-            
-            const texture = new THREE.CanvasTexture(canvas);
-            const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
-            const sprite = new THREE.Sprite(spriteMaterial);
-            sprite.scale.set(0.8, 0.8, 1);
-            
-            return sprite;
-        }
-        
-        function addAxes() {
-            const axesGroup = new THREE.Group();
-            const axisLength = 14;
-            const labelPositionOffset = 8;
-            
-            const createAxis = (color, rotation) => {
-                const geometry = new THREE.CylinderGeometry(0.03, 0.03, axisLength, 16);
-                const material = new THREE.MeshBasicMaterial({ color });
-                const axis = new THREE.Mesh(geometry, material);
-                if (rotation) axis.rotation[rotation.axis] = rotation.angle;
-                
-                if (rotation && rotation.axis === 'z') axis.position.x = axisLength / 2;
-                else if (rotation && rotation.axis === 'x') axis.position.z = axisLength / 2;
-                else if (!rotation) axis.position.y = axisLength / 2;
-                
-                return axis;
+            window.onresize = () => {
+                camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+                renderer.setSize(innerWidth, innerHeight);
             };
-            
-            axesGroup.add(createAxis(0xff0000, { axis: 'z', angle: Math.PI / 2 }));
-            axesGroup.add(createAxis(0x00ff00, null));
-            axesGroup.add(createAxis(0x0000ff, { axis: 'x', angle: Math.PI / 2 }));
-            
-            const xLabel = createTextSprite('X', '#FF0000');
-            xLabel.position.set(labelPositionOffset, 0, 0);
-            axesGroup.add(xLabel);
-            
-            const yLabel = createTextSprite('Y', '#00FF00');
-            yLabel.position.set(0, labelPositionOffset, 0);
-            axesGroup.add(yLabel);
-            
-            const zLabel = createTextSprite('Z', '#0000FF');
-            zLabel.position.set(0, 0, labelPositionOffset);
-            axesGroup.add(zLabel);
-            
-            scene.add(axesGroup);
-            
-            const gridHelper = new THREE.GridHelper(14, 28, 0xcccccc, 0xe0e0e0);
-            scene.add(gridHelper);
-        }
-        
-        function evaluateFunction(expr, variable) {
-            try {
-                const scope = { 
-                    x: variable,
-                    e: Math.E,
-                    pi: Math.PI,
-                    π: Math.PI
-                };
-                
-                let processed = expr
-                    .replace(/\bpi\b/gi, 'pi')
-                    .replace(/π/g, 'pi')
-                    .replace(/log\(/g, 'log10(')
-                    .replace(/ln\(/g, 'log(');
-                
-                return math.evaluate(processed, scope);
-            } catch (e) {
-                throw new Error('無法計算函數: ' + expr);
-            }
-        }
-        
-        function parseBoundary(boundStr) {
-            try {
-                const scope = { 
-                    e: Math.E,
-                    pi: Math.PI,
-                    π: Math.PI
-                };
-                
-                let processed = boundStr
-                    .replace(/\bpi\b/gi, 'pi')
-                    .replace(/π/g, 'pi');
-                
-                return math.evaluate(processed, scope);
-            } catch (e) {
-                throw new Error('無法解析邊界: ' + boundStr);
-            }
-        }
-        
-        function getCrossSectionArea(baseLength, type) {
-            const s = baseLength;
-            switch(type) {
-                case 'square':
-                    return s * s;
-                case 'triangle':
-                    return (Math.sqrt(3) / 4) * s * s;
-                case 'semicircle':
-                    return (Math.PI / 8) * s * s;
-                default:
-                    return s * s;
-            }
-        }
-        
-        function createCrossSection(x, baseLength, type) {
-            const geometry = new THREE.BufferGeometry();
-            const vertices = [];
-            const indices = [];
-            
-            const s = baseLength;
-            const halfS = s / 2;
-            
-            switch(type) {
-                case 'square':
-                    // 正方形（在 yz 平面）
-                    vertices.push(
-                        x, -halfS, -halfS,
-                        x, halfS, -halfS,
-                        x, halfS, halfS,
-                        x, -halfS, halfS
-                    );
-                    indices.push(0, 1, 2, 0, 2, 3);
-                    break;
-                    
-                case 'triangle':
-                    // 等邊三角形（頂點朝上）
-                    const height = (Math.sqrt(3) / 2) * s;
-                    vertices.push(
-                        x, -halfS, 0,
-                        x, halfS, 0,
-                        x, 0, height
-                    );
-                    indices.push(0, 1, 2);
-                    break;
-                    
-                case 'semicircle':
-                    // 半圓（直徑水平）
-                    const radius = s / 2;
-                    const segments = 20;
-                    vertices.push(x, -radius, 0);
-                    for (let i = 0; i <= segments; i++) {
-                        const angle = (i / segments) * Math.PI;
-                        const y = -radius + Math.cos(angle) * radius;
-                        const z = Math.sin(angle) * radius;
-                        vertices.push(x, y, z);
-                    }
-                    for (let i = 1; i <= segments; i++) {
-                        indices.push(0, i, i + 1);
-                    }
-                    break;
-            }
-            
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-            geometry.setIndex(indices);
-            geometry.computeVertexNormals();
-            
-            return geometry;
-        }
-        
-        function prepareData() {
-            const topFunc = document.getElementById('topFunc').value;
-            const bottomFunc = document.getElementById('bottomFunc').value;
-            const aStr = document.getElementById('lowerBound').value;
-            const bStr = document.getElementById('upperBound').value;
-            const sliceCount = parseInt(document.getElementById('sliceCount').value);
-            
-            const a = parseBoundary(aStr);
-            const b = parseBoundary(bStr);
-            
-            if (a >= b) {
-                throw new Error('上界必須大於下界');
-            }
-            
-            return { topFunc, bottomFunc, a, b, aStr, bStr, sliceCount };
-        }
-        
-        function calculateExactIntegral(topExpr, bottomExpr, a, b, sectionType) {
-            // 嘗試精確計算
-            const cleanTop = topExpr.replace(/\s/g, '').toLowerCase();
-            const cleanBottom = bottomExpr.replace(/\s/g, '').toLowerCase();
-            
-            // 計算基底長度函數 s(x) = top - bottom
-            let baseLengthExpr = '';
-            
-            // 特殊情況處理
-            // 題1: sqrt(x) - (-sqrt(x)) = 2*sqrt(x)
-            if (cleanTop === 'sqrt(x)' && cleanBottom === '-sqrt(x)') {
-                baseLengthExpr = '2*sqrt(x)';
-            }
-            // 題5: 2*sqrt(sin(x)) - 0 = 2*sqrt(sin(x))
-            else if (cleanTop.includes('sqrt(sin(x))') && cleanBottom === '0') {
-                baseLengthExpr = cleanTop;
-            }
-            // 題8b: sqrt(x) - x/2
-            else if (cleanTop === 'sqrt(x)' && cleanBottom === 'x/2') {
-                baseLengthExpr = 'sqrt(x)-x/2';
-            }
-            
-            // 根據截面類型計算面積
-            let areaCoeff = 1;
-            let areaName = 's²';
-            switch(sectionType) {
-                case 'square':
-                    areaCoeff = 1;
-                    areaName = 's²';
-                    break;
-                case 'triangle':
-                    areaCoeff = Math.sqrt(3) / 4;
-                    areaName = '(√3/4)s²';
-                    break;
-                case 'semicircle':
-                    areaCoeff = Math.PI / 8;
-                    areaName = '(π/8)s²';
-                    break;
-            }
-            
-            // 嘗試精確積分
-            // 題1: 正方形, s=2√x, A=4x, ∫₀⁴ 4x dx = [2x²]₀⁴ = 32
-            if (baseLengthExpr === '2*sqrt(x)' && sectionType === 'square' && a === 0 && b === 4) {
-                return { exact: true, symbolic: '16', numeric: 16 };
-            }
-            
-            // 題5a: 等邊三角, s=2√sin(x), A=(√3/4)(4sin(x))=√3·sin(x), ∫₀^π √3·sin(x) dx = 2√3
-            if (cleanTop === '2*sqrt(sin(x))' && sectionType === 'triangle' && a === 0 && Math.abs(b - Math.PI) < 0.01) {
-                return { exact: true, symbolic: '2√3', numeric: 2 * Math.sqrt(3) };
-            }
-            
-            // 題5b: 正方形, s=2√sin(x), A=4sin(x), ∫₀^π 4sin(x) dx = 8
-            if (cleanTop === '2*sqrt(sin(x))' && sectionType === 'square' && a === 0 && Math.abs(b - Math.PI) < 0.01) {
-                return { exact: true, symbolic: '8', numeric: 8 };
-            }
-            
-            // 題8b: 半圓, s=√x-x/2, A=(π/8)(√x-x/2)²
-            // ∫₀⁴ (π/8)(x - x^(3/2) + x²/4) dx = π/15
-            if (baseLengthExpr === 'sqrt(x)-x/2' && sectionType === 'semicircle' && a === 0 && b === 4) {
-                return { exact: true, symbolic: 'π/15', numeric: Math.PI / 15 };
-            }
-            
-            return null; // 無法精確計算
-        }
-        
-        function generateSolidWithSlices(data, numSlices) {
-            if (solidGroup) scene.remove(solidGroup);
-            solidGroup = new THREE.Group();
-            
-            const { topFunc, bottomFunc, a, b, sliceCount } = data;
-            const step = (b - a) / sliceCount;
-            
-            let volume = 0;
-            
-            for (let i = 0; i < numSlices && i < sliceCount; i++) {
-                const x = a + i * step;
-                const yTop = evaluateFunction(topFunc, x);
-                const yBottom = evaluateFunction(bottomFunc, x);
-                const baseLength = Math.abs(yTop - yBottom);
-                
-                if (!isFinite(baseLength) || baseLength <= 0) continue;
-                
-                const area = getCrossSectionArea(baseLength, currentSectionType);
-                volume += area * step;
-                
-                const sectionGeom = createCrossSection(x, baseLength, currentSectionType);
-                const material = new THREE.MeshPhongMaterial({
-                    color: new THREE.Color().setHSL(i / sliceCount, 0.7, 0.6),
-                    side: THREE.DoubleSide,
-                    transparent: true,
-                    opacity: 0.85,
-                    flatShading: false
-                });
-                
-                const mesh = new THREE.Mesh(sectionGeom, material);
-                solidGroup.add(mesh);
-                
-                // 添加邊框
-                const edges = new THREE.EdgesGeometry(sectionGeom);
-                const line = new THREE.LineSegments(
-                    edges,
-                    new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 1 })
-                );
-                solidGroup.add(line);
-            }
-            
-            scene.add(solidGroup);
-            return volume;
-        }
-        
-        function generateSolid() {
-            const errorMsg = document.getElementById('errorMsg');
-            errorMsg.style.display = 'none';
-            
-            try {
-                cachedData = prepareData();
-                
-                // 嘗試精確積分
-                const exactResult = calculateExactIntegral(
-                    cachedData.topFunc,
-                    cachedData.bottomFunc,
-                    cachedData.a,
-                    cachedData.b,
-                    currentSectionType
-                );
-                
-                let volume, displayText;
-                
-                if (exactResult && exactResult.exact) {
-                    volume = exactResult.numeric;
-                    displayText = exactResult.symbolic;
-                } else {
-                    volume = generateSolidWithSlices(cachedData, cachedData.sliceCount);
-                    displayText = volume.toFixed(6);
-                }
-                
-                document.getElementById('result').style.display = 'block';
-                document.getElementById('volumeValue').textContent = displayText;
-                
-                let areaFormula = '';
-                switch(currentSectionType) {
-                    case 'square': areaFormula = 's²'; break;
-                    case 'triangle': areaFormula = '(√3/4)s²'; break;
-                    case 'semicircle': areaFormula = '(π/8)s²'; break;
-                }
-                
-                document.getElementById('formulaDisplay').textContent = 
-                    `V = ∫[${cachedData.aStr}, ${cachedData.bStr}] A(x) dx, where A(x) = ${areaFormula}`;
-                
-                // 生成視覺化
-                generateSolidWithSlices(cachedData, cachedData.sliceCount);
-                
-            } catch (e) {
-                errorMsg.textContent = '錯誤: ' + e.message;
-                errorMsg.style.display = 'block';
-                document.getElementById('result').style.display = 'none';
-            }
-        }
-        
-        function startAnimation() {
-            if (isAnimating && !animationPaused) return;
-            
-            const errorMsg = document.getElementById('errorMsg');
-            errorMsg.style.display = 'none';
-            
-            try {
-                if (!cachedData) {
-                    cachedData = prepareData();
-                }
-                
-                if (!animationPaused) {
-                    currentSliceIndex = 0;
-                }
-                
-                isAnimating = true;
-                animationPaused = false;
-                isLooping = document.getElementById('loopCheck').checked;
-                
-                document.getElementById('animProgress').style.display = 'block';
-                document.getElementById('totalSlices').textContent = cachedData.sliceCount;
-                
-                updateAnimationButtons(true);
-                
-                animationInterval = setInterval(() => {
-                    if (currentSliceIndex <= cachedData.sliceCount) {
-                        const volume = generateSolidWithSlices(cachedData, currentSliceIndex);
-                        
-                        document.getElementById('currentSlices').textContent = currentSliceIndex;
-                        const percentage = (currentSliceIndex / cachedData.sliceCount * 100).toFixed(0);
-                        document.getElementById('progressFill').style.width = percentage + '%';
-                        document.getElementById('progressFill').textContent = percentage + '%';
-                        
-                        if (currentSliceIndex === cachedData.sliceCount) {
-                            document.getElementById('result').style.display = 'block';
-                            document.getElementById('volumeValue').textContent = volume.toFixed(6);
-                        }
-                        
-                        currentSliceIndex++;
-                    } else {
-                        if (isLooping) {
-                            currentSliceIndex = 0;
-                        } else {
-                            stopAnimation();
-                        }
-                    }
-                }, animationSpeed);
-                
-            } catch (e) {
-                errorMsg.textContent = '錯誤: ' + e.message;
-                errorMsg.style.display = 'block';
-                stopAnimation();
-            }
-        }
-        
-        function pauseAnimation() {
-            if (!isAnimating) return;
-            
-            animationPaused = true;
-            clearInterval(animationInterval);
-            updateAnimationButtons(false);
-        }
-        
-        function stopAnimation() {
-            isAnimating = false;
-            animationPaused = false;
-            clearInterval(animationInterval);
-            currentSliceIndex = 0;
-            updateAnimationButtons(false);
-            
-            document.getElementById('currentSlices').textContent = '0';
-            document.getElementById('progressFill').style.width = '0%';
-            document.getElementById('progressFill').textContent = '0%';
-            
-            if (cachedData) {
-                generateSolidWithSlices(cachedData, 0);
-            }
-        }
-        
-        function updateAnimationButtons(playing) {
-            const playBtn = document.querySelectorAll('.anim-btn.play')[0];
-            const pauseBtn = document.querySelectorAll('.anim-btn.pause')[0];
-            const stopBtn = document.querySelectorAll('.anim-btn.stop')[0];
-            
-            if (playing) {
-                playBtn.disabled = true;
-                pauseBtn.disabled = false;
-                stopBtn.disabled = false;
-            } else {
-                playBtn.disabled = false;
-                pauseBtn.disabled = true;
-                stopBtn.disabled = true;
-            }
+            animate();
+            runSimulation();
         }
         
         function animate() {
-            requestAnimationFrame(animate);
-            
-            // --- 更新控制器 ---
-            if (controls) controls.update();
-            
-            renderer.render(scene, camera);
+            requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera);
         }
-        
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-        
+
+        function setType(t) {
+            currentType = t;
+            document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+        }
+
+        function loadExample(i) {
+            const ex = examples[i];
+            document.getElementById('top').value = ex.t;
+            document.getElementById('bot').value = ex.b;
+            document.getElementById('a').value = ex.s;
+            document.getElementById('b').value = ex.e;
+            setType(ex.type);
+            // 強制顯示精確解
+            document.getElementById('volRes').dataset.exact = ex.ans; 
+            runSimulation();
+        }
+
+        function getVal(expr, x) {
+            try { return math.evaluate(expr.toLowerCase().replace(/ln/g,'log'), {x:x, pi:Math.PI, e:Math.E}); } 
+            catch(e) { return 0; }
+        }
+
+        function createSlice(x, w, type, color) {
+            const shape = new THREE.Shape();
+            // 在 YZ 平面上繪製
+            if(type === 'square') {
+                shape.moveTo(-w/2, -w/2); shape.lineTo(w/2, -w/2);
+                shape.lineTo(w/2, w/2); shape.lineTo(-w/2, w/2);
+            } else if(type === 'triangle') {
+                const h = w * Math.sqrt(3)/2;
+                shape.moveTo(-w/2, 0); shape.lineTo(w/2, 0); shape.lineTo(0, h);
+            } else { // semicircle
+                shape.absarc(0,0,w/2,0,Math.PI,false);
+            }
+            
+            const geom = new THREE.ExtrudeGeometry(shape, { depth: 0.05, bevelEnabled: false });
+            // 旋轉幾何體以符合座標系：截面垂直於 X 軸
+            geom.rotateY(Math.PI/2); 
+            // 根據形狀調整位置
+            if(type === 'semicircle') geom.rotateX(Math.PI); // 轉正
+            
+            geom.translate(x, 0, 0);
+            return new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color:color, transparent:true, opacity:0.8}));
+        }
+
+        function runSimulation() {
+            if(solid) scene.remove(solid);
+            solid = new THREE.Group(); scene.add(solid);
+            
+            const topF = document.getElementById('top').value;
+            const botF = document.getElementById('bot').value;
+            const start = getVal(document.getElementById('a').value,0);
+            const end = getVal(document.getElementById('b').value,0);
+            const n = parseInt(document.getElementById('slices').value);
+            const dx = (end-start)/n;
+            
+            let vol = 0;
+            
+            for(let i=0; i<=n; i++) {
+                const x = start + i*dx;
+                const h = Math.abs(getVal(topF, x) - getVal(botF, x));
+                if(h > 0.01) {
+                    const mesh = createSlice(x, h, currentType, new THREE.Color().setHSL(i/n*0.8, 0.7, 0.5));
+                    solid.add(mesh);
+                    
+                    // 累加體積 (Riemann Sum)
+                    let area = 0;
+                    if(currentType === 'square') area = h*h;
+                    else if(currentType === 'triangle') area = (Math.sqrt(3)/4)*h*h;
+                    else area = (Math.PI/8)*h*h;
+                    vol += area * dx;
+                }
+            }
+            
+            const resDiv = document.getElementById('result');
+            resDiv.style.display = 'block';
+            
+            // 顯示邏輯：如果有預設的精確解就用，否則顯示計算值
+            const exact = document.getElementById('volRes').dataset.exact;
+            if(exact) {
+                document.getElementById('volRes').textContent = exact;
+                // 清除 dataset 以免影響下次自訂計算
+                document.getElementById('volRes').removeAttribute('data-exact');
+            } else {
+                document.getElementById('volRes').textContent = vol.toFixed(4);
+            }
+            
+            let fText = "";
+            if(currentType==='square') fText="A(x) = s²";
+            else if(currentType==='triangle') fText="A(x) = (√3/4)s²";
+            else fText="A(x) = (π/8)s²";
+            document.getElementById('formula').textContent = fText + " (s = Top - Bottom)";
+        }
+
+        // 簡易動畫邏輯
+        function playAnim() {
+            if(animId) return;
+            scene.remove(solid); solid = new THREE.Group(); scene.add(solid);
+            const n = parseInt(document.getElementById('slices').value);
+            let i = 0;
+            isPaused = false;
+            
+            function loop() {
+                if(isPaused) return;
+                if(i > n) { stopAnim(); runSimulation(); return; } // 結束後重繪完整版
+                
+                // 這裡重複一部分 runSimulation 的邏輯來逐個添加
+                const topF = document.getElementById('top').value;
+                const botF = document.getElementById('bot').value;
+                const start = getVal(document.getElementById('a').value,0);
+                const end = getVal(document.getElementById('b').value,0);
+                const dx = (end-start)/n;
+                const x = start + i*dx;
+                const h = Math.abs(getVal(topF, x) - getVal(botF, x));
+                
+                if(h > 0.01) {
+                    solid.add(createSlice(x, h, currentType, new THREE.Color().setHSL(i/n*0.8, 0.7, 0.5)));
+                }
+                document.getElementById('pBar').style.width = (i/n*100)+'%';
+                i++;
+                animId = setTimeout(() => requestAnimationFrame(loop), 50);
+            }
+            loop();
+        }
+        function pauseAnim() { isPaused = true; clearTimeout(animId); animId=null; }
+        function stopAnim() { pauseAnim(); runSimulation(); document.getElementById('pBar').style.width='0%'; }
+
         init();
     </script>
 </body>
