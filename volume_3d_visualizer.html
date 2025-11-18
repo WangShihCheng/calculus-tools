@@ -308,6 +308,19 @@
             document.getElementById('resValue').textContent = val;
             document.getElementById('totalSlices').textContent = val;
         }
+        function updateProgress(curr, total) {
+            document.getElementById('currentSlices').textContent = curr;
+            document.getElementById('totalSlices').textContent = total;
+            
+            // 計算百分比
+            const percent = Math.round((curr / total) * 100);
+            
+            // 更新寬度 (綠色條)
+            document.getElementById('progressFill').style.width = percent + '%';
+            
+            // --- 修正關鍵：更新文字 (讓 0% 變成 100%) ---
+            document.getElementById('progressFill').textContent = percent + '%';
+        }
         function updateSpeed(val) {
             const ms = [200, 100, 50, 25, 10];
             const txt = ['極慢', '慢速', '中速', '快速', '極快'];
