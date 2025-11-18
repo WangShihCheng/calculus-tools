@@ -491,14 +491,18 @@
                 if (!cachedSolidData) generateSolid();
                 isAnimating = true; animationPaused = false;
                 if (!animationPaused) currentSliceCount = 0;
+                
                 document.getElementById('animProgress').style.display = 'block';
                 updateAnimBtns(true);
+                
                 animationInterval = setInterval(() => {
                     if (currentSliceCount <= cachedSolidData.res) {
+                        // 1. 畫圖
                         generateSolidWithSlices(cachedSolidData, currentSliceCount);
-                        document.getElementById('currentSlices').textContent = currentSliceCount;
-                        document.getElementById('totalSlices').textContent = cachedSolidData.res;
-                        document.getElementById('progressFill').style.width = (currentSliceCount/cachedSolidData.res*100) + '%';
+                        
+                        // 2. 更新進度條
+                        updateProgress(currentSliceCount, cachedSolidData.res);
+                        
                         currentSliceCount++;
                     } else {
                         stopAnimation();
