@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cross-Section 截面法視覺化</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
     <style>
         * {
@@ -332,7 +333,7 @@
         <p class="subtitle">Volume by Cross-Sections</p>
         
         <div class="examples">
-            <h4>📚 範例：</h4>
+            <h4>📚 作業範例（基於 PDF）：</h4>
             <span class="example-btn" onclick="loadExample(0)">題1: 正方形</span>
             <span class="example-btn" onclick="loadExample(1)">題5a: 等邊三角</span>
             <span class="example-btn" onclick="loadExample(2)">題5b: 正方形</span>
@@ -375,7 +376,6 @@
         
         <button class="main-btn" onclick="generateSolid()">🔄 生成完整固體</button>
         
-        <!-- 動畫控制 -->
         <div class="animation-controls">
             <h4>🎬 動畫控制</h4>
             
@@ -426,8 +426,8 @@
     
     <div id="info-panel">
         <strong>🎨 操作說明</strong><br>
-        <strong>拖曳：</strong>旋轉 3D 視角<br>
-        <strong>滾輪：</strong>縮放畫面<br>
+        <strong>拖曳/觸控：</strong>旋轉 3D 視角<br>
+        <strong>滾輪/雙指：</strong>縮放畫面<br>
         <strong>動畫：</strong>觀看切片逐個堆疊<br>
         <strong>重複播放：</strong>自動循環動畫<br>
         <br>
@@ -439,6 +439,7 @@
         let scene, camera, renderer, solidGroup;
         let currentSectionType = 'square';
         let controlsCollapsed = false;
+        let controls; // 定義控制器變數
         
         // 動畫變數
         let isAnimating = false;
@@ -540,7 +541,14 @@
             scene.add(pointLight);
             
             addAxes();
-            setupControls();
+            
+            // --- 控制器修改開始 ---
+            // 使用 OrbitControls 取代手動事件監聽
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true; // 啟用阻尼，讓旋轉更平滑
+            controls.dampingFactor = 0.05;
+            // --- 控制器修改結束 ---
+
             animate();
             generateSolid();
         }
@@ -603,63 +611,6 @@
             
             const gridHelper = new THREE.GridHelper(14, 28, 0xcccccc, 0xe0e0e0);
             scene.add(gridHelper);
-        }
-        
-        function setupControls() {
-            let isDragging = false;
-            let previousMousePosition = { x: 0, y: 0 };
-            const rotationSpeed = 0.005;
-            
-            renderer.domElement.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                previousMousePosition = { x: e.clientX, y: e.clientY };
-            });
-            
-            renderer.domElement.addEventListener('mousemove', (e) => {
-                if (isDragging) {
-                    const deltaX = e.clientX - previousMousePosition.x;
-                    const deltaY = e.clientY - previousMousePosition.y;
-                    
-                    const radius = Math.sqrt(
-                        camera.position.x ** 2 + 
-                        camera.position.y ** 2 + 
-                        camera.position.z ** 2
-                    );
-                    
-                    const theta = Math.atan2(camera.position.z, camera.position.x);
-                    const phi = Math.acos(camera.position.y / radius);
-                    
-                    const newTheta = theta - deltaX * rotationSpeed;
-                    const newPhi = Math.max(0.1, Math.min(Math.PI - 0.1, phi - deltaY * rotationSpeed));
-                    
-                    camera.position.x = radius * Math.sin(newPhi) * Math.cos(newTheta);
-                    camera.position.y = radius * Math.cos(newPhi);
-                    camera.position.z = radius * Math.sin(newPhi) * Math.sin(newTheta);
-                    camera.lookAt(0, 0, 0);
-                    
-                    previousMousePosition = { x: e.clientX, y: e.clientY };
-                }
-            });
-            
-            renderer.domElement.addEventListener('mouseup', () => {
-                isDragging = false;
-            });
-            
-            renderer.domElement.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                const delta = e.deltaY * 0.001;
-                const radius = Math.sqrt(
-                    camera.position.x ** 2 + 
-                    camera.position.y ** 2 + 
-                    camera.position.z ** 2
-                );
-                const newRadius = Math.max(5, Math.min(30, radius + delta * 10));
-                const scale = newRadius / radius;
-                
-                camera.position.x *= scale;
-                camera.position.y *= scale;
-                camera.position.z *= scale;
-            });
         }
         
         function evaluateFunction(expr, variable) {
@@ -1043,6 +994,10 @@
         
         function animate() {
             requestAnimationFrame(animate);
+            
+            // --- 更新控制器 ---
+            if (controls) controls.update();
+            
             renderer.render(scene, camera);
         }
         
