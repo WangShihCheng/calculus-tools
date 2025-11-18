@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>旋轉體體積視覺化（動畫版）</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
     <style>
         * {
@@ -424,7 +425,6 @@
         
         <button class="main-btn" onclick="generateSolid()">🔄 生成完整旋轉體</button>
         
-        <!-- 動畫控制區 -->
         <div class="animation-controls">
             <h4>🎬 動畫模式</h4>
             <p style="font-size: 12px; color: #2e7d32; margin-bottom: 10px;">
@@ -469,8 +469,8 @@
     
     <div id="info-panel">
         <strong>🎨 互動控制說明</strong><br>
-        <strong>滑鼠左鍵拖曳：</strong>旋轉 3D 視角<br>
-        <strong>滑鼠滾輪：</strong>縮放畫面遠近<br>
+        <strong>拖曳/觸控：</strong>旋轉 3D 視角<br>
+        <strong>滾輪/雙指：</strong>縮放畫面遠近<br>
         <strong>動畫模式：</strong>觀看圓盤逐個堆疊<br>
         <br>
         <strong>💡 教學提示：</strong><br>
@@ -485,6 +485,7 @@
         let currentMethod = 'disk';
         let currentAxis = 'x';
         let controlsCollapsed = false;
+        let controls; // 定義控制器變數
         
         // 動畫相關變數
         let isAnimating = false;
@@ -553,7 +554,14 @@
             scene.add(pointLight);
             
             addAxes();
-            setupControls();
+            
+            // --- 控制器修改開始 ---
+            // 使用 OrbitControls 取代手動事件監聽
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true; // 啟用阻尼
+            controls.dampingFactor = 0.05;
+            // --- 控制器修改結束 ---
+
             animate();
             generateSolid();
         }
@@ -616,63 +624,6 @@
             
             const gridHelper = new THREE.GridHelper(12, 24, 0xcccccc, 0xe0e0e0);
             scene.add(gridHelper);
-        }
-        
-        function setupControls() {
-            let isDragging = false;
-            let previousMousePosition = { x: 0, y: 0 };
-            const rotationSpeed = 0.005;
-            
-            renderer.domElement.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                previousMousePosition = { x: e.clientX, y: e.clientY };
-            });
-            
-            renderer.domElement.addEventListener('mousemove', (e) => {
-                if (isDragging) {
-                    const deltaX = e.clientX - previousMousePosition.x;
-                    const deltaY = e.clientY - previousMousePosition.y;
-                    
-                    const radius = Math.sqrt(
-                        camera.position.x ** 2 + 
-                        camera.position.y ** 2 + 
-                        camera.position.z ** 2
-                    );
-                    
-                    const theta = Math.atan2(camera.position.z, camera.position.x);
-                    const phi = Math.acos(camera.position.y / radius);
-                    
-                    const newTheta = theta - deltaX * rotationSpeed;
-                    const newPhi = Math.max(0.1, Math.min(Math.PI - 0.1, phi - deltaY * rotationSpeed));
-                    
-                    camera.position.x = radius * Math.sin(newPhi) * Math.cos(newTheta);
-                    camera.position.y = radius * Math.cos(newPhi);
-                    camera.position.z = radius * Math.sin(newPhi) * Math.sin(newTheta);
-                    camera.lookAt(0, 0, 0);
-                    
-                    previousMousePosition = { x: e.clientX, y: e.clientY };
-                }
-            });
-            
-            renderer.domElement.addEventListener('mouseup', () => {
-                isDragging = false;
-            });
-            
-            renderer.domElement.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                const delta = e.deltaY * 0.001;
-                const radius = Math.sqrt(
-                    camera.position.x ** 2 + 
-                    camera.position.y ** 2 + 
-                    camera.position.z ** 2
-                );
-                const newRadius = Math.max(3, Math.min(25, radius + delta * 10));
-                const scale = newRadius / radius;
-                
-                camera.position.x *= scale;
-                camera.position.y *= scale;
-                camera.position.z *= scale;
-            });
         }
         
         function evaluateFunction(expr, variable) {
@@ -1076,6 +1027,10 @@
         
         function animate() {
             requestAnimationFrame(animate);
+            
+            // --- 更新控制器 ---
+            if (controls) controls.update();
+            
             renderer.render(scene, camera);
         }
         
