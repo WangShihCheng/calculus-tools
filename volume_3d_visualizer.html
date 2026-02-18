@@ -378,7 +378,30 @@
                     ex.axis === currentAxis) exactStr = ex.exact;
             });
 
-            return { outerFunc, innerFunc, a, b, res, exactResult: exactStr, aStr: document.getElementById('lowerBound').value, bStr: document.getElementById('upperBound').value };
+            return { outerFunc, innerFunc, a, b, res, exactResult: exactStr, aStr: document.getElementById('lowerBound').value, bStr: document.getElementById('upperBound').value, method: currentMethod, axis: currentAxis };
+        }
+
+
+        function calculateNumericalVolume(data, intervals) {
+            const { outerFunc, innerFunc, a, b, res } = data;
+            let n = Math.max(40, Math.floor(intervals || res * 6));
+            if (n % 2 !== 0) n += 1;
+            const h = (b - a) / n;
+
+            const integrand = (t) => {
+                let R = Math.abs(evaluateFunction(outerFunc, t));
+                let r = data.method === 'washer' ? Math.abs(evaluateFunction(innerFunc, t)) : 0;
+                if (!isFinite(R)) R = 0;
+                if (!isFinite(r)) r = 0;
+                if (r > R) [R, r] = [r, R];
+                return Math.PI * Math.max(0, (R * R) - (r * r));
+            };
+
+            let sum = integrand(a) + integrand(b);
+            for (let i = 1; i < n; i++) {
+                sum += (i % 2 === 0 ? 2 : 4) * integrand(a + i * h);
+            }
+            return (h / 3) * sum;
         }
 
         function generateSolidWithSlices(data, limit) {
@@ -392,7 +415,7 @@
             for (let i = 0; i <= limit; i++) {
                 const t = a + i * step;
                 let R = Math.abs(evaluateFunction(outerFunc, t));
-                let r = currentMethod === 'washer' ? Math.abs(evaluateFunction(innerFunc, t)) : 0;
+                let r = data.method === 'washer' ? Math.abs(evaluateFunction(innerFunc, t)) : 0;
                 if (!isFinite(R)) R = 0; if (!isFinite(r)) r = 0;
                 
                 if (i < limit) calculatedVolume += Math.PI * (R*R - r*r) * step;
@@ -400,8 +423,8 @@
                 for (let j = 0; j <= segments; j++) {
                     const theta = (j / segments) * Math.PI * 2;
                     const cos = Math.cos(theta), sin = Math.sin(theta);
-                    const x = currentAxis === 'x' ? t : R * cos;
-                    const y = currentAxis === 'x' ? R * cos : t;
+                    const x = data.axis === 'x' ? t : R * cos;
+                    const y = data.axis === 'x' ? R * cos : t;
                     const z = R * sin;
                     vertices.push(x, y, z);
                     
@@ -409,9 +432,9 @@
                     const prog = i / res;
                     colors.push(0.1 + prog * 0.5, 0.3 + prog * 0.2, 0.9, 0.8);
 
-                    if (currentMethod === 'washer' && r > 0.01) {
-                        const ix = currentAxis === 'x' ? t : r * cos;
-                        const iy = currentAxis === 'x' ? r * cos : t;
+                    if (data.method === 'washer' && r > 0.01) {
+                        const ix = data.axis === 'x' ? t : r * cos;
+                        const iy = data.axis === 'x' ? r * cos : t;
                         const iz = r * sin;
                         vertices.push(ix, iy, iz);
                         colors.push(0.8, 0.2, 0.2, 0.8);
@@ -419,13 +442,13 @@
                 }
             }
             
-            const ptsPerSlice = (segments + 1) * (currentMethod === 'washer' ? 2 : 1);
+            const ptsPerSlice = (segments + 1) * (data.method === 'washer' ? 2 : 1);
             for (let i = 0; i < limit; i++) {
                 for (let j = 0; j < segments; j++) {
-                    const base = i * ptsPerSlice + j * (currentMethod === 'washer' ? 2 : 1);
-                    const nextBase = (i + 1) * ptsPerSlice + j * (currentMethod === 'washer' ? 2 : 1);
+                    const base = i * ptsPerSlice + j * (data.method === 'washer' ? 2 : 1);
+                    const nextBase = (i + 1) * ptsPerSlice + j * (data.method === 'washer' ? 2 : 1);
                     
-                    if (currentMethod === 'washer') {
+                    if (data.method === 'washer') {
                         indices.push(base, nextBase, base+2);
                         indices.push(base+2, nextBase, nextBase+2);
                         indices.push(base+1, base+3, nextBase+1);
@@ -462,19 +485,20 @@
                     data.exactResult = cachedSolidData.exactResult;
                     cachedSolidData = null;
                 }
-                const vol = generateSolidWithSlices(data, data.res);
-                
+                generateSolidWithSlices(data, data.res);
+
                 document.getElementById('result').style.display = 'block';
                 if (data.exactResult) {
                     document.getElementById('volumeValue').textContent = data.exactResult;
                 } else {
+                    const vol = calculateNumericalVolume(data);
                     document.getElementById('volumeValue').textContent = vol.toFixed(6);
                 }
 
-                const v = currentAxis === 'x' ? 'x' : 'y';
-                const rText = currentMethod === 'disk' ? `[R(${v})]^2` : `([R(${v})]^2 - [r(${v})]^2)`;
+                const v = data.axis === 'x' ? 'x' : 'y';
+                const rText = data.method === 'disk' ? `[R(${v})]^2` : `([R(${v})]^2 - [r(${v})]^2)`;
                 const formulaEl = document.getElementById('formulaDisplay');
-                formulaEl.textContent = `$$V = \\int_{${data.aStr}}^{${data.bStr}} \\pi ${rText} d${v}$$`;
+                formulaEl.textContent = `$$V = \\int_{${data.aStr}}^{${data.bStr}} \\pi ${rText} d${v}$$ (數值: Simpson)`;
                 
                 if (window.MathJax) MathJax.typesetPromise();
 

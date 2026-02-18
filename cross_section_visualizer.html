@@ -784,7 +784,7 @@
                 throw new Error('上界必須大於下界');
             }
             
-            return { topFunc, bottomFunc, a, b, aStr, bStr, sliceCount };
+            return { topFunc, bottomFunc, a, b, aStr, bStr, sliceCount, sectionType: currentSectionType };
         }
         
         function calculateExactIntegral(topExpr, bottomExpr, a, b, sectionType) {
@@ -830,7 +830,7 @@
             // 嘗試精確積分
             // 題1: 正方形, s=2√x, A=4x, ∫₀⁴ 4x dx = [2x²]₀⁴ = 32
             if (baseLengthExpr === '2*sqrt(x)' && sectionType === 'square' && a === 0 && b === 4) {
-                return { exact: true, symbolic: '16', numeric: 16 };
+                return { exact: true, symbolic: '32', numeric: 32 };
             }
             
             // 題5a: 等邊三角, s=2√sin(x), A=(√3/4)(4sin(x))=√3·sin(x), ∫₀^π √3·sin(x) dx = 2√3
@@ -852,6 +852,29 @@
             return null; // 無法精確計算
         }
         
+
+        function calculateNumericalVolume(data, intervals = 240) {
+            const { topFunc, bottomFunc, a, b } = data;
+            let n = Math.max(20, Math.floor(intervals));
+            if (n % 2 !== 0) n += 1; // Simpson's rule requires even intervals
+            const h = (b - a) / n;
+
+            const areaAt = (x) => {
+                const yTop = evaluateFunction(topFunc, x);
+                const yBottom = evaluateFunction(bottomFunc, x);
+                const baseLength = Math.abs(yTop - yBottom);
+                if (!isFinite(baseLength) || baseLength <= 0) return 0;
+                return getCrossSectionArea(baseLength, data.sectionType);
+            };
+
+            let sum = areaAt(a) + areaAt(b);
+            for (let i = 1; i < n; i++) {
+                const coeff = i % 2 === 0 ? 2 : 4;
+                sum += coeff * areaAt(a + i * h);
+            }
+            return (h / 3) * sum;
+        }
+
         function generateSolidWithSlices(data, numSlices) {
             if (solidGroup) scene.remove(solidGroup);
             solidGroup = new THREE.Group();
@@ -869,10 +892,10 @@
                 
                 if (!isFinite(baseLength) || baseLength <= 0) continue;
                 
-                const area = getCrossSectionArea(baseLength, currentSectionType);
+                const area = getCrossSectionArea(baseLength, data.sectionType);
                 volume += area * step;
                 
-                const sectionGeom = createCrossSection(x, baseLength, currentSectionType);
+                const sectionGeom = createCrossSection(x, baseLength, data.sectionType);
                 const material = new THREE.MeshPhongMaterial({
                     color: new THREE.Color().setHSL(i / sliceCount, 0.7, 0.6),
                     side: THREE.DoubleSide,
@@ -910,7 +933,7 @@
                     cachedData.bottomFunc,
                     cachedData.a,
                     cachedData.b,
-                    currentSectionType
+                    cachedData.sectionType
                 );
                 
                 let volume, displayText;
@@ -919,7 +942,7 @@
                     volume = exactResult.numeric;
                     displayText = exactResult.symbolic;
                 } else {
-                    volume = generateSolidWithSlices(cachedData, cachedData.sliceCount);
+                    volume = calculateNumericalVolume(cachedData, Math.max(200, cachedData.sliceCount * 6));
                     displayText = volume.toFixed(6);
                 }
                 
@@ -927,14 +950,14 @@
                 document.getElementById('volumeValue').textContent = displayText;
                 
                 let areaFormula = '';
-                switch(currentSectionType) {
+                switch(cachedData.sectionType) {
                     case 'square': areaFormula = 's²'; break;
                     case 'triangle': areaFormula = '(√3/4)s²'; break;
                     case 'semicircle': areaFormula = '(π/8)s²'; break;
                 }
                 
                 document.getElementById('formulaDisplay').textContent = 
-                    `V = ∫[${cachedData.aStr}, ${cachedData.bStr}] A(x) dx, where A(x) = ${areaFormula}`;
+                    `V = ∫[${cachedData.aStr}, ${cachedData.bStr}] A(x) dx, A(x) = ${areaFormula} (數值: Simpson)`;
                 
                 // 生成視覺化
                 generateSolidWithSlices(cachedData, cachedData.sliceCount);
@@ -972,7 +995,7 @@
                 
                 animationInterval = setInterval(() => {
                     if (currentSliceIndex <= cachedData.sliceCount) {
-                        const volume = generateSolidWithSlices(cachedData, currentSliceIndex);
+                        generateSolidWithSlices(cachedData, currentSliceIndex);
                         
                         document.getElementById('currentSlices').textContent = currentSliceIndex;
                         const percentage = (currentSliceIndex / cachedData.sliceCount * 100).toFixed(0);
@@ -980,8 +1003,21 @@
                         document.getElementById('progressFill').textContent = percentage + '%';
                         
                         if (currentSliceIndex === cachedData.sliceCount) {
+                            const exactResult = calculateExactIntegral(
+                                cachedData.topFunc,
+                                cachedData.bottomFunc,
+                                cachedData.a,
+                                cachedData.b,
+                                cachedData.sectionType
+                            );
+                            const isExact = exactResult && exactResult.exact;
+                            const preciseVolume = isExact
+                                ? exactResult.numeric
+                                : calculateNumericalVolume(cachedData, Math.max(200, cachedData.sliceCount * 6));
                             document.getElementById('result').style.display = 'block';
-                            document.getElementById('volumeValue').textContent = volume.toFixed(6);
+                            document.getElementById('volumeValue').textContent = isExact
+                                ? exactResult.symbolic
+                                : preciseVolume.toFixed(6);
                         }
                         
                         currentSliceIndex++;
